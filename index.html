@@ -5,136 +5,155 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI DBA Assistant</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:100vh;font-size:14px;color:#1e293b}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#eef2f7;min-height:100vh;font-size:15px;color:#1e293b;line-height:1.5}
 #loginOverlay{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a8a,#1e40af);display:flex;align-items:center;justify-content:center;z-index:9999}
 #loginOverlay.hidden{display:none}
-.login-card{background:#fff;border-radius:12px;padding:40px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.login-card h2{color:#1e3a8a;font-size:22px;margin-bottom:6px}
-.login-card p{color:#64748b;font-size:13px;margin-bottom:24px}
-.login-card input{width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:14px;margin-bottom:12px}
-.login-card input:focus{outline:none;border-color:#2563eb}
-.login-btn{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer}
+.login-card{background:#fff;border-radius:14px;padding:44px;width:380px;box-shadow:0 24px 64px rgba(0,0,0,.35)}
+.login-card h2{color:#1e3a8a;font-size:24px;margin-bottom:6px;font-weight:700}
+.login-card p{color:#64748b;font-size:14px;margin-bottom:26px}
+.login-card input{width:100%;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:15px;margin-bottom:12px;font-family:inherit}
+.login-card input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.login-btn{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
 .login-btn:hover{background:#1d4ed8}
-#loginError{color:#dc2626;font-size:12px;margin-top:8px;min-height:18px}
+#loginError{color:#dc2626;font-size:13px;margin-top:8px;min-height:18px}
 .app-wrapper{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.app-header{background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.app-header h1{font-size:17px;font-weight:700}
-.app-header p{font-size:11px;opacity:.8;margin-top:1px}
-.logout-btn{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer}
-#connectionBanner{background:#16a34a;color:#fff;padding:9px 20px;display:none;align-items:center;gap:10px;font-size:13px;font-weight:500;flex-shrink:0}
+.app-header{background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;padding:13px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.app-header h1{font-size:18px;font-weight:700;letter-spacing:-.2px}
+.app-header p{font-size:12px;opacity:.75;margin-top:2px}
+.logout-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:6px 16px;border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500}
+.logout-btn:hover{background:rgba(255,255,255,.22)}
+#connectionBanner{background:linear-gradient(90deg,#15803d,#16a34a);color:#fff;padding:10px 28px;display:none;align-items:center;gap:10px;font-size:13.5px;font-weight:500;flex-shrink:0}
 #connectionBanner.show{display:flex}
-.conn-dot{width:9px;height:9px;background:#86efac;border-radius:50%;flex-shrink:0}
-.disconn-btn{background:#dc2626;color:#fff;border:none;padding:5px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto}
+.conn-dot{width:9px;height:9px;background:#86efac;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px #86efac}
+.disconn-btn{background:#dc2626;color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto;font-family:inherit}
 .app-body{display:flex;flex:1;overflow:hidden;position:relative}
-.sidebar{width:300px;min-width:300px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;overflow:hidden;transition:width .25s,min-width .25s;flex-shrink:0}
+.sidebar{width:300px;min-width:300px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;overflow:hidden;transition:width .25s,min-width .25s;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,.04)}
 .sidebar.collapsed{width:0;min-width:0}
-.sidebar-head{padding:14px 16px 0;border-bottom:1px solid #e2e8f0;flex-shrink:0}
+.sidebar-head{padding:16px 16px 0;border-bottom:1px solid #e2e8f0;flex-shrink:0}
 .sidebar-head h2{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:10px}
 .stabs{display:flex;gap:0}
-.stab{padding:8px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:#64748b;border-bottom:2px solid transparent;font-weight:500;white-space:nowrap}
-.stab.active{color:#2563eb;border-bottom-color:#2563eb}
-.sidebar-body{flex:1;overflow-y:auto;padding:14px}
-.fg{margin-bottom:10px}
-.fg label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
-.fg select,.fg input[type=text],.fg input[type=password],.fg input[type=number]{width:100%;padding:7px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:13px;background:#fff}
-.fg select:focus,.fg input:focus{outline:none;border-color:#2563eb}
-.profile-preview{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#166534;font-weight:500;white-space:pre-line}
+.stab{padding:9px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:#64748b;border-bottom:2px solid transparent;font-weight:500;white-space:nowrap;font-family:inherit}
+.stab.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
+.sidebar-body{flex:1;overflow-y:auto;padding:16px}
+.fg{margin-bottom:11px}
+.fg label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+.fg select,.fg input[type=text],.fg input[type=password],.fg input[type=number]{width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:14px;background:#fff;font-family:inherit;transition:border-color .15s}
+.fg select:focus,.fg input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.profile-preview{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:9px 11px;margin-bottom:10px;font-size:13px;color:#166534;font-weight:500;white-space:pre-line}
 .connect-row{display:flex;gap:8px}
-.btn-green{flex:1;background:#16a34a;color:#fff;border:none;padding:9px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.btn-green{flex:1;background:#16a34a;color:#fff;border:none;padding:10px;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;font-family:inherit}
 .btn-green:hover{background:#15803d}
-.btn-del{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:9px 11px;border-radius:6px;cursor:pointer;font-size:14px}
-.sidebar-msg{margin-top:10px;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;display:none}
+.btn-del{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 12px;border-radius:7px;cursor:pointer;font-size:14px}
+.sidebar-msg{margin-top:10px;padding:9px 11px;border-radius:7px;font-size:13px;line-height:1.4;display:none}
 .sidebar-msg.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;display:block}
 .sidebar-msg.err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;display:block}
 .sidebar-msg.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;display:block}
-.conn-info-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;margin-top:12px;display:none}
-.conn-info-lbl{font-size:12px;font-weight:600;color:#166534;margin-bottom:6px}
-.btn-disconn-sm{width:100%;background:#dc2626;color:#fff;border:none;padding:7px;border-radius:5px;font-size:12px;cursor:pointer}
-.collapse-tab{position:absolute;left:300px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;width:16px;height:44px;border-radius:0 5px 5px 0;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;font-size:10px;border:none;transition:left .25s}
+.conn-info-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:11px 13px;margin-top:12px;display:none}
+.conn-info-lbl{font-size:13px;font-weight:600;color:#166534;margin-bottom:6px}
+.btn-disconn-sm{width:100%;background:#dc2626;color:#fff;border:none;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500}
+.collapse-tab{position:absolute;left:300px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;width:16px;height:48px;border-radius:0 6px 6px 0;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;font-size:10px;border:none;transition:left .25s;box-shadow:3px 0 8px rgba(37,99,235,.3)}
 .sidebar.collapsed~.collapse-tab{left:0}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .pre-connect{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;gap:12px;padding:40px;text-align:center}
 .pre-connect .ico{font-size:52px}
 .pre-connect h3{font-size:18px;color:#475569}
-.health-panel{padding:14px 18px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0}
-.health-panel-title{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-.health-terminal{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:12px 14px;font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;max-height:240px;overflow-y:auto;line-height:1.6}
-.health-ph{color:#64748b;font-size:13px;text-align:center;padding:20px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:8px}
-.health-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:24px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:8px;color:#2563eb;font-size:13px;font-weight:500}
-.subtab-bar{display:flex;background:#fff;border-bottom:2px solid #e2e8f0;flex-shrink:0;padding:0 18px}
-.subtab{padding:10px 18px;border:none;background:none;cursor:pointer;font-size:14px;color:#64748b;border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:500;transition:color .2s;white-space:nowrap;display:flex;align-items:center;gap:5px}
-.subtab:hover:not(.locked){color:#2563eb}
-.subtab.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
-.subtab.locked{color:#cbd5e1;cursor:not-allowed}
+
+/* ── Health panel ─────────────────────────── */
+.health-panel{padding:0;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0}
+.health-panel-title{font-size:15px;font-weight:700;color:#1e293b;display:flex;align-items:center;justify-content:space-between;padding:12px 24px;cursor:pointer;user-select:none;background:#fff;border-bottom:1px solid transparent;transition:background .15s}
+.health-panel-title:hover{background:#f8fafc}
+.health-panel-title .hp-left{display:flex;align-items:center;gap:8px}
+.health-panel-title .hp-chevron{font-size:11px;color:#94a3b8;transition:transform .25s}
+.health-panel-title.collapsed .hp-chevron{transform:rotate(-90deg)}
+.health-panel-body{padding:0 24px 14px;transition:all .25s}
+.health-panel-body.hidden{display:none}
+.health-terminal{background:#0f172a;color:#e2e8f0;border-radius:9px;padding:13px 15px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12.5px;white-space:pre-wrap;max-height:230px;overflow-y:auto;line-height:1.65}
+.health-ph{color:#64748b;font-size:14px;text-align:center;padding:22px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:9px}
+.health-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:22px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:9px;color:#2563eb;font-size:14px;font-weight:500}
+
+/* ── Main tabs ────────────────────────────── */
+.subtab-bar{display:flex;background:#1e293b;flex-shrink:0;padding:0 24px;gap:2px}
+.subtab{padding:12px 20px;border:none;background:none;cursor:pointer;font-size:14px;color:#94a3b8;border-bottom:3px solid transparent;margin-bottom:0;font-weight:500;transition:color .15s,background .15s;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;border-radius:6px 6px 0 0}
+.subtab:hover{color:#e2e8f0;background:rgba(255,255,255,.07)}
+.subtab.active{color:#fff;border-bottom-color:#3b82f6;font-weight:600;background:rgba(59,130,246,.18)}
+.subtab.locked{color:#475569;cursor:not-allowed}
 .panels{flex:1;overflow:hidden}
-.panel{display:none;height:100%;overflow-y:auto;padding:18px}
+.panel{display:none;height:100%;overflow-y:auto;padding:24px 32px}
 .panel.active{display:block}
-.ask-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:14px}
-.ask-card textarea{width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:9px 11px;font-size:14px;font-family:inherit;resize:vertical;min-height:80px}
-.ask-card textarea:focus{outline:none;border-color:#2563eb}
-.response-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-top:10px;display:none;font-size:13px;line-height:1.7;color:#374151}
+.ask-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.ask-card textarea{width:100%;border:1.5px solid #e2e8f0;border-radius:7px;padding:10px 12px;font-size:15px;font-family:inherit;resize:vertical;min-height:90px;transition:border-color .15s}
+.ask-card textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.response-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-top:12px;display:none;font-size:14px;line-height:1.75;color:#374151}
 .response-box.show{display:block}
-.rec-bar{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.rec-out{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;display:none}
+.rec-bar{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.rec-out{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px;display:none}
 .rec-out.show{display:block}
-.rec-sec-title{font-size:14px;font-weight:700;color:#1e293b;margin:14px 0 8px;padding-bottom:5px;border-bottom:2px solid #2563eb}
-.rec-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin-bottom:8px;border-left:4px solid #94a3b8}
+.rec-sec-title{font-size:15px;font-weight:700;color:#1e293b;margin:16px 0 10px;padding-bottom:6px;border-bottom:2px solid #2563eb}
+.rec-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:14px;margin-bottom:10px;border-left:4px solid #94a3b8}
 .rec-item.HIGH{border-left-color:#dc2626}
 .rec-item.MEDIUM{border-left-color:#f59e0b}
 .rec-item.LOW{border-left-color:#22c55e}
 .rec-item.INFO{border-left-color:#60a5fa}
-.sev{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.sev{padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:.3px}
 .sev.HIGH{background:#fee2e2;color:#dc2626}
 .sev.MEDIUM{background:#fef3c7;color:#d97706}
 .sev.LOW{background:#dcfce7;color:#16a34a}
 .sev.INFO{background:#dbeafe;color:#1d4ed8}
-.rec-desc{font-size:12px;color:#475569;margin:6px 0;line-height:1.5}
-.rec-sql{background:#0f172a;color:#e2e8f0;padding:7px 10px;border-radius:4px;font-family:'Courier New',monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;margin:3px 0}
+.rec-desc{font-size:13px;color:#475569;margin:7px 0;line-height:1.55}
+.rec-sql{background:#0f172a;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;margin:4px 0}
 .ts-head h2{font-size:20px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:7px;margin-bottom:4px}
-.ts-head p{color:#64748b;font-size:13px;margin-bottom:14px}
-.ts-subtab-bar{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:16px}
-.ts-subtab{padding:9px 18px;border:none;background:none;cursor:pointer;font-size:13px;color:#64748b;border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:500;transition:color .2s;white-space:nowrap}
+.ts-head p{color:#64748b;font-size:14px;margin-bottom:14px}
+.ts-subtab-bar{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:18px}
+.ts-subtab{padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;color:#64748b;border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:500;transition:color .15s;white-space:nowrap;font-family:inherit}
 .ts-subtab:hover{color:#2563eb}
-.ts-subtab.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
+.ts-subtab.active{color:#1e40af;border-bottom-color:#2563eb;font-weight:700}
 .ts-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
-.ts-btn{padding:8px 16px;border:1.5px solid #d1d5db;background:#fff;border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;transition:all .2s}
+.ts-btn{padding:8px 16px;border:1.5px solid #d1d5db;background:#fff;border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;transition:all .2s;font-family:inherit}
 .ts-btn:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff}
-.ts-result{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:16px;display:none}
+.ts-result{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:16px;display:none}
 .ts-result.show{display:block}
-.ts-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;max-height:360px;overflow-y:auto}
-.sql-lookup{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:16px}
-.sql-lookup h3{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:11px;display:flex;align-items:center;gap:6px}
+.ts-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:12px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12.5px;white-space:pre-wrap;max-height:360px;overflow-y:auto}
+.sql-lookup{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.sql-lookup h3{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:12px;display:flex;align-items:center;gap:6px}
 .lookup-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
 .lookup-row .fg{margin-bottom:0}
-.btn-blue{padding:8px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.btn-blue{padding:9px 15px;background:#2563eb;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;font-family:inherit}
 .btn-blue:hover{background:#1d4ed8}
-.btn-purple{padding:8px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
-.btn-pink{padding:8px 14px;background:#db2777;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
-.btn-outline-xs{padding:5px 12px;border:1.5px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:14px;cursor:pointer;font-size:12px;font-weight:500;margin-top:8px;display:inline-flex;align-items:center;gap:4px}
-.sqlid-panel{margin-top:14px}
-.sqlid-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.sqlid-hdr h3{font-size:15px;font-weight:700;color:#1e293b}
-.sql-id-pill{background:#dbeafe;color:#1d4ed8;padding:2px 10px;border-radius:11px;font-size:12px;font-weight:600;font-family:monospace}
-.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;overflow:hidden}
-.card-title{padding:9px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;gap:6px}
-.sql-text-box{background:#1e293b;color:#e2e8f0;padding:11px 14px;font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;max-height:130px;overflow-y:auto;line-height:1.6;word-break:break-all}
-.stats-health-row{background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn-purple{padding:9px 15px;background:#7c3aed;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;font-family:inherit}
+.btn-pink{padding:9px 15px;background:#db2777;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;font-family:inherit}
+.btn-outline-xs{padding:5px 13px;border:1.5px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:14px;cursor:pointer;font-size:12px;font-weight:500;margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-family:inherit}
+.sqlid-panel{margin-top:16px}
+.sqlid-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sqlid-hdr h3{font-size:16px;font-weight:700;color:#1e293b}
+.sql-id-pill{background:#dbeafe;color:#1d4ed8;padding:3px 12px;border-radius:12px;font-size:13px;font-weight:600;font-family:'Cascadia Code','Fira Code',monospace}
+/* Collapsible card */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-title{padding:11px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:6px}
+.card-collapsible .card-title{cursor:pointer;user-select:none;justify-content:space-between}
+.card-collapsible .card-title:hover{background:#f8fafc}
+.card-collapsible .card-chev{font-size:11px;color:#94a3b8;transition:transform .2s}
+.card-collapsible.collapsed .card-chev{transform:rotate(-90deg)}
+.card-collapsible.collapsed .card-body{display:none}
+.sql-text-box{background:#1e293b;color:#e2e8f0;padding:12px 15px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12.5px;white-space:pre-wrap;max-height:140px;overflow-y:auto;line-height:1.65;word-break:break-all}
+.stats-health-row{background:#fefce8;border:1px solid #fde68a;border-radius:9px;padding:10px 15px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sh-label{font-size:13px;font-weight:700;color:#92400e}
-.sh-badge{padding:3px 10px;border-radius:11px;font-size:12px;font-weight:500;background:#fff7ed;border:1px solid #fde68a;color:#78350f;white-space:nowrap}
+.sh-badge{padding:3px 11px;border-radius:12px;font-size:12px;font-weight:500;background:#fff7ed;border:1px solid #fde68a;color:#78350f;white-space:nowrap}
 .sh-badge.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
-.analysis-cov-row{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.analysis-cov-row{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:10px 15px;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ac-label{font-size:13px;font-weight:700;color:#166534}
 .ac-badge{padding:3px 10px;border-radius:11px;font-size:12px;font-weight:500;background:#fff;border:1px solid #86efac;color:#166534;white-space:nowrap}
 .ac-badge.no{background:#fef2f2;border-color:#fecaca;color:#dc2626}
-.dt{width:100%;border-collapse:collapse;font-size:12px}
-.dt th{background:#f8fafc;padding:7px 11px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;white-space:nowrap}
-.dt td{padding:6px 11px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap}
+.dt{width:100%;border-collapse:collapse;font-size:13px}
+.dt th{background:#f1f5f9;padding:8px 12px;text-align:left;font-weight:600;color:#334155;border-bottom:1px solid #e2e8f0;white-space:nowrap;font-size:12px;letter-spacing:.2px}
+.dt td{padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:normal;word-break:break-word}
+.dt td.nowrap{white-space:nowrap}
 .dt tr:last-child td{border-bottom:none}
 .dt tr:hover td{background:#f8fafc}
 .dt .r{text-align:right}
-.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 14px;margin-bottom:12px}
-.warn-item{font-size:12px;color:#92400e;display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:10px 15px;margin-bottom:14px}
+.warn-item{font-size:13px;color:#92400e;display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .plan-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;overflow:hidden}
 .plan-card-hdr{padding:9px 14px;border-bottom:1px solid #e2e8f0;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#374151;user-select:none}
 .plan-card-body{display:none}
@@ -176,18 +195,18 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
 .pred-cols-line{padding:7px 14px;font-size:12px;border-bottom:1px solid #e2e8f0;color:#475569}
 .ai-output{background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-top:12px;overflow:hidden}
 .ai-body{padding:14px;font-size:13px;line-height:1.7;color:#374151;white-space:pre-wrap;max-height:500px;overflow-y:auto}
-.loading-row{display:none;align-items:center;gap:8px;color:#64748b;font-size:13px;padding:12px 0}
+.loading-row{display:none;align-items:center;gap:8px;color:#64748b;font-size:14px;padding:14px 0}
 .loading-row.show{display:flex}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite}
-.spinner-lg{display:inline-block;width:20px;height:20px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite}
+.spinner-lg{display:inline-block;width:22px;height:22px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.btn-primary{padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{padding:9px 20px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit;transition:background .15s}
 .btn-primary:hover{background:#1d4ed8}
-.btn-sm{padding:5px 11px;font-size:12px;border:1px solid #e2e8f0;background:#fff;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
-.btn-sm:hover{background:#f8fafc}
-.settings-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:14px}
-.settings-card h3{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:12px}
-.info-box{background:#fff8e1;border:1px solid #ffc107;border-radius:6px;padding:11px;font-size:13px;color:#856404;margin-bottom:12px}
+.btn-sm{padding:6px 13px;font-size:13px;border:1px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-family:inherit;transition:background .15s}
+.btn-sm:hover{background:#f1f5f9;border-color:#cbd5e1}
+.settings-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.settings-card h3{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:14px}
+.info-box{background:#fff8e1;border:1px solid #ffc107;border-radius:7px;padding:12px;font-size:14px;color:#856404;margin-bottom:14px}
 .rca-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:14px}
 .rca-card h3{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:12px;display:flex;align-items:center;gap:7px}
 .rca-form-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
@@ -255,7 +274,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
           <div class="fg"><label>Environment</label><select id="envSelect" onchange="onEnvChange()"><option value="">--</option></select></div>
           <div class="fg"><label>Database</label><select id="dbSelect" onchange="onDbChange()"><option value="">--</option></select></div>
           <div class="profile-preview" id="profilePreview">Select a profile above</div>
-          <div class="connect-row">
+          <div class="connect-row" id="quickConnRow">
             <button class="btn-green" id="quickConnBtn" onclick="quickConnect()">Connect</button>
             <button class="btn-del" onclick="deleteProfile()">Delete</button>
           </div>
@@ -288,6 +307,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
           </div>
           <button class="btn-green" style="width:100%" id="manualConnBtn" onclick="manualConnect()">Connect to Database</button>
           <div id="manualMsg" class="sidebar-msg"></div>
+          <div id="saveProfileDiv" style="display:none;margin-top:8px">
+            <div style="display:flex;gap:6px">
+              <input type="text" id="saveAppName" placeholder="App Name" style="flex:1;padding:5px 8px;border:1px solid #e2e8f0;border-radius:5px;font-size:12px">
+              <input type="text" id="saveEnvName" placeholder="Env" style="width:70px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:5px;font-size:12px">
+            </div>
+            <button class="btn-sm" style="margin-top:6px;width:100%" onclick="saveAsProfile()">Save as Profile</button>
+          </div>
         </div>
         <div id="connInfoBox" class="conn-info-box">
           <div class="conn-info-lbl" id="connInfoLbl">Connected</div>
@@ -298,19 +324,28 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
     <button class="collapse-tab" id="collapseTab" onclick="toggleSidebar()">&#9664;</button>
 
     <div class="main" id="mainArea">
-      <div id="postConnect" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-        <div class="health-panel">
-          <div class="health-panel-title">
-            <span>Health Analysis</span>
-            <button class="btn-sm" onclick="refreshHealth()">Refresh</button>
+      <div id="postConnect" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+        <div class="health-panel" id="healthPanelWrap">
+          <div class="health-panel-title" id="healthToggleBtn" onclick="toggleHealthPanel()">
+            <span class="hp-left">
+              <span class="hp-chevron" id="healthChevron">&#9660;</span>
+              <span>&#9679;&nbsp; Health Analysis</span>
+            </span>
+            <span onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:8px">
+              <span id="healthStatusBadge" style="display:none;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700"></span>
+              <button class="btn-sm" onclick="refreshHealth()">&#8635; Refresh</button>
+            </span>
           </div>
-          <div id="healthPH" class="health-ph">Connect to a database to begin collecting health metrics.</div>
-          <div id="healthLoading" class="health-loading" style="display:none">
-            <div class="spinner-lg"></div>
-            <span>Collecting health metrics...</span>
-          </div>
-          <div id="healthPanel" style="display:none">
-            <div class="health-terminal" id="healthContent"></div>
+          <div class="health-panel-body" id="healthPanelBody">
+            <div id="healthPH" class="health-ph">Connect to a database to begin collecting health metrics.</div>
+            <div id="healthLoading" class="health-loading" style="display:none">
+              <div class="spinner-lg"></div>
+              <span>Collecting health metrics...</span>
+            </div>
+            <div id="healthPanel" style="display:none">
+              <div class="health-terminal" id="healthContent"></div>
+              <div id="healthIssues"></div>
+            </div>
           </div>
         </div>
 
@@ -336,8 +371,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
                 <div style="font-weight:600;color:#374151;font-size:13px">Your Question</div>
                 <div style="font-size:12px;color:#64748b;margin-top:3px">e.g. What is my cache hit ratio? Show slow queries. Give me tuning recommendations.</div>
               </div>
-              <textarea id="queryText" placeholder="Ask anything about your database performance..."></textarea>
-              <div style="margin-top:10px"><button class="btn-primary" onclick="submitQuery()">Ask Question</button></div>
+              <textarea id="queryText" placeholder="Ask anything about your database performance..." onkeydown="if(event.ctrlKey && event.key==='Enter'){submitQuery();event.preventDefault();}"></textarea>
+              <div style="margin-top:10px"><button class="btn-primary" onclick="submitQuery()">Ask Question</button><span style="font-size:11px;color:#94a3b8;margin-left:8px">Ctrl+Enter to submit</span></div>
             </div>
             <div id="queryLoading" class="loading-row"><div class="spinner"></div> Analyzing...</div>
             <div id="queryResponse" class="response-box">
@@ -401,7 +436,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
             <div id="tsPanel-ash" class="ts-sub-panel" style="display:none">
               <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
                 <button class="btn-primary" onclick="runASH()">Load ASH Data</button>
-                <span style="font-size:12px;color:#64748b">Last 30 minutes</span>
+                <select id="ashMinutes" style="padding:5px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:12px">
+                  <option value="15">Last 15 min</option>
+                  <option value="30" selected>Last 30 min</option>
+                  <option value="60">Last 1 hour</option>
+                  <option value="120">Last 2 hours</option>
+                  <option value="360">Last 6 hours</option>
+                </select>
               </div>
               <div id="ashLoading" class="loading-row"><div class="spinner"></div> Loading ASH data...</div>
               <div id="ashResult"></div>
@@ -414,7 +455,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
                 <div class="lookup-row">
                   <div class="fg">
                     <label>Lookup Type</label>
-                    <select id="lookupType" style="min-width:160px;padding:7px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:13px">
+                    <select id="lookupType" onchange="onLookupTypeChange()" style="min-width:160px;padding:7px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:13px">
                       <option value="sql_id">SQL ID / Query ID</option>
                       <option value="session_id">Session ID</option>
                     </select>
@@ -435,18 +476,24 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
 
               <div id="sqlIdPanel" style="display:none" class="sqlid-panel">
                 <div class="sqlid-hdr">
-                  <h3>ORACLE SQL Details --</h3>
+                  <h3 id="sqlIdPanelTitle">SQL Details —</h3>
                   <span class="sql-id-pill" id="sqlIdPill"></span>
                 </div>
-                <div class="card">
-                  <div class="card-title">SQL Text</div>
-                  <div class="sql-text-box" id="sqlTextBox"></div>
+                <div class="card card-collapsible" id="cardSqlText">
+                  <div class="card-title" onclick="toggleCard('cardSqlText')">
+                    <span>&#128196; SQL Text</span><span class="card-chev">&#9660;</span>
+                  </div>
+                  <div class="card-body">
+                    <div class="sql-text-box" id="sqlTextBox"></div>
+                  </div>
                 </div>
                 <div class="stats-health-row" id="statsHealthRow"><span class="sh-label">Stats Health</span></div>
                 <div class="analysis-cov-row" id="analysisCovRow"><span class="ac-label">Analysis Coverage:</span></div>
-                <div class="card" id="execStatsCard">
-                  <div class="card-title">Execution Statistics</div>
-                  <div style="overflow-x:auto">
+                <div class="card card-collapsible" id="cardExecStats">
+                  <div class="card-title" onclick="toggleCard('cardExecStats')">
+                    <span>&#128202; Execution Statistics</span><span class="card-chev">&#9660;</span>
+                  </div>
+                  <div class="card-body" style="overflow-x:auto">
                     <table class="dt" id="execStatsTable">
                       <thead><tr><th>Exec Date</th><th class="r">Inst</th><th>Module</th><th class="r">Plan Hash</th><th class="r">Execs</th><th class="r">CPU (s)</th><th class="r">Elapsed (s)</th><th class="r">Avg Ela (s)</th></tr></thead>
                       <tbody id="execStatsTbody"></tbody>
@@ -456,8 +503,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
                 <div id="warnBox" class="warn-box" style="display:none"><div id="warnList"></div></div>
                 <div id="plansContainer"></div>
                 <div id="idxCovContainer"></div>
+                <!-- Object Statistics (table, index, column) -->
+                <div id="objStatsContainer"></div>
                 <div id="aiOutPanel" style="display:none" class="ai-output">
-                  <div class="card-title">AT&amp;T AI Analysis</div>
+                  <div class="card-title">&#129302; AT&amp;T AI Analysis</div>
                   <div id="aiOutContent" class="ai-body"></div>
                 </div>
               </div>
@@ -663,6 +712,8 @@ async function manualConnect(){
     if(r.ok){
       const label=`${data.database_type.toUpperCase()} ${data.host}:${data.port}/${data.database} (${data.user})`;
       setConn(d.connection_id,label);showSMsg('manualMsg','ok','Connected successfully');
+      const saveDiv=document.getElementById('saveProfileDiv');
+      if(saveDiv){saveDiv.style.display='block';saveDiv._data=data;}
       if(d.health_report)renderHealth(d.health_report);else await refreshHealth();
     }else showSMsg('manualMsg','err',`${d.detail}`);
   }catch(e){showSMsg('manualMsg','err',`${e.message}`);}
@@ -676,28 +727,51 @@ function setConn(id,label){
   document.getElementById('connInfoBox').style.display='block';
   document.getElementById('connInfoLbl').textContent=label;
   document.getElementById('connectFirstMsg').style.display='none';
+  const _qcr=document.getElementById('quickConnRow');if(_qcr)_qcr.style.display='none';
+  const _mcb=document.getElementById('manualConnBtn');if(_mcb)_mcb.style.display='none';
   // Show health loading state
   document.getElementById('healthPH').style.display='none';
   document.getElementById('healthPanel').style.display='none';
   document.getElementById('healthLoading').style.display='flex';
+  // Collapse sidebar
+  const sb=document.getElementById('sidebar'),ct=document.getElementById('collapseTab');
+  if(!sb.classList.contains('collapsed')){sb.classList.add('collapsed');ct.innerHTML='&#9654;';}
 }
 
 function clearConn(){
   currentConn=null;
   document.getElementById('connectionBanner').classList.remove('show');
   document.getElementById('connInfoBox').style.display='none';
+  const _qcr2=document.getElementById('quickConnRow');if(_qcr2)_qcr2.style.display='';
+  const _mcb2=document.getElementById('manualConnBtn');if(_mcb2)_mcb2.style.display='';
   document.getElementById('healthPH').style.display='block';
   document.getElementById('healthPanel').style.display='none';
   document.getElementById('healthLoading').style.display='none';
   document.getElementById('connectFirstMsg').style.display='none';
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.subtab').forEach(b=>b.classList.remove('active'));
+  // Expand sidebar so user can reconnect
+  const sb=document.getElementById('sidebar'),ct=document.getElementById('collapseTab');
+  if(sb.classList.contains('collapsed')){sb.classList.remove('collapsed');ct.innerHTML='&#9664;';}
 }
 
 async function disconnectDB(){
   if(!currentConn)return;
   try{await fetch(`${API}/disconnect/${enc(currentConn)}`,{headers:{'x-api-key':tok()}});}catch{}
   clearConn();
+}
+
+/* Health panel collapse */
+function toggleHealthPanel(){
+  const body=document.getElementById('healthPanelBody');
+  const btn=document.getElementById('healthToggleBtn');
+  body.classList.toggle('hidden');
+  btn.classList.toggle('collapsed');
+}
+
+/* Generic card collapse */
+function toggleCard(id){
+  document.getElementById(id).classList.toggle('collapsed');
 }
 
 function switchTab(tab,btn){
@@ -720,6 +794,10 @@ function switchTsSubTab(tab,btn){
   if(btn)btn.classList.add('active');
   const panel=document.getElementById('tsPanel-'+tab);
   if(panel)panel.style.display='';
+  // Auto-load on first visit
+  if(tab==='wait'&&!document.getElementById('waitResult').innerHTML)runWaitEvents();
+  if(tab==='block'&&!document.getElementById('blockResult').innerHTML)runBlocking();
+  if(tab==='ash'&&!document.getElementById('ashResult').innerHTML)runASH();
 }
 
 async function refreshHealth(){
@@ -742,12 +820,44 @@ function renderHealth(report){
     return[`  Status     : ${s.status||'?'}  (ML confidence ${s.confidence_pct||0}%)`,`  Version    : ${s.version||'n/a'}`,`  Cache Hit  : ${s.cache_hit_ratio||0}%`,`  Connections: ${s.active_connections||0} / ${s.max_connections||0}  (${s.connection_usage_pct||0}% used)`,`  Issues     : ${s.issue_count||0} total`].join('\n');
   })();
   content.textContent=text;ph.style.display='none';panel.style.display='block';
+  // Show status badge in title
+  const badge=document.getElementById('healthStatusBadge');
+  if(badge){
+    const s=report.summary||{};const status=s.status||report.ml_prediction||'';
+    badge.textContent=status;badge.style.display=status?'inline':'none';
+    badge.style.background=status==='NEEDS TUNING'?'#fee2e2':status==='HEALTHY'?'#dcfce7':'#f1f5f9';
+    badge.style.color=status==='NEEDS TUNING'?'#dc2626':status==='HEALTHY'?'#16a34a':'#475569';
+  }
+  // Auto-expand health panel if it was collapsed
+  const body=document.getElementById('healthPanelBody');
+  const btn=document.getElementById('healthToggleBtn');
+  if(body&&body.classList.contains('hidden')){body.classList.remove('hidden');btn.classList.remove('collapsed');}
+  // Render issues if present
+  let issuesHtml='';
+  const issues=report.issues||[];
+  const high=issues.filter(i=>i.severity==='HIGH');
+  const med=issues.filter(i=>i.severity==='MEDIUM');
+  if(high.length){
+    issuesHtml+='<div style="margin-top:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px">';
+    issuesHtml+='<div style="font-weight:600;color:#dc2626;font-size:12px;margin-bottom:6px">HIGH Priority Issues ('+high.length+')</div>';
+    high.forEach(i=>{issuesHtml+='<div style="font-size:12px;color:#dc2626;margin-bottom:3px">&bull; '+esc(i.issue||i.title||'')+'</div>';});
+    issuesHtml+='</div>';
+  }
+  if(med.length){
+    issuesHtml+='<div style="margin-top:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px">';
+    issuesHtml+='<div style="font-weight:600;color:#d97706;font-size:12px;margin-bottom:6px">MEDIUM Priority Issues ('+med.length+')</div>';
+    med.forEach(i=>{issuesHtml+='<div style="font-size:12px;color:#92400e;margin-bottom:3px">&bull; '+esc(i.issue||i.title||'')+'</div>';});
+    issuesHtml+='</div>';
+  }
+  const healthIssuesDiv=document.getElementById('healthIssues');
+  if(healthIssuesDiv)healthIssuesDiv.innerHTML=issuesHtml;
 }
 
 async function submitQuery(){
   if(!currentConn)return;
   const query=document.getElementById('queryText').value;if(!query)return;
   const ld=document.getElementById('queryLoading'),rb=document.getElementById('queryResponse'),rt=document.getElementById('queryResponseText');
+  const _sqBtn=document.querySelector('#panel-query .btn-primary');_sqBtn.disabled=true;_sqBtn.style.opacity='0.6';
   ld.classList.add('show');rb.classList.remove('show');
   try{
     const keys=getKeys();
@@ -762,12 +872,13 @@ async function submitQuery(){
     }
     rb.classList.add('show');
   }catch(e){rt.textContent=`Error: ${e.message}`;rb.classList.add('show');}
-  finally{ld.classList.remove('show');}
+  finally{ld.classList.remove('show');_sqBtn.disabled=false;_sqBtn.style.opacity='';}
 }
 
 async function getRecommendations(){
   if(!currentConn)return;
   const ld=document.getElementById('recLoading'),out=document.getElementById('recOut'),content=document.getElementById('recContent'),st=document.getElementById('recStatus');
+  const _recBtn=document.querySelector('#panel-recommendations .btn-primary');_recBtn.disabled=true;_recBtn.style.opacity='0.6';
   ld.classList.add('show');out.classList.remove('show');st.style.display='none';document.getElementById('recActionBar').style.display='none';
   try{
     const keys=getKeys(),lookback=parseInt(document.getElementById('recLookback').value||'0');
@@ -776,7 +887,7 @@ async function getRecommendations(){
     if(r.ok){content.innerHTML=buildRecHTML(d);out.classList.add('show');document.getElementById('recActionBar').style.display='flex';}
     else{st.style.display='block';st.style.cssText='display:block;padding:7px 11px;border-radius:6px;font-size:12px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;margin-bottom:10px';st.textContent=`Error: ${d.detail}`;}
   }catch(e){st.style.display='block';st.textContent=`Error: ${e.message}`;}
-  finally{ld.classList.remove('show');}
+  finally{ld.classList.remove('show');_recBtn.disabled=false;_recBtn.style.opacity='';}
 }
 
 function buildRecHTML(result){
@@ -801,6 +912,36 @@ function buildRecHTML(result){
       h+='<div class="rec-item" style="border-left-color:#60a5fa"><div style="font-size:13px;font-weight:600;margin-bottom:5px">'+esc(rec.parameter||'')+'</div>';
       h+='<div class="rec-desc">Current: <code>'+esc(rec.current_value||'Default')+'</code> &rarr; <strong>'+esc(rec.recommended_value||'')+'</strong><br>'+esc(rec.description||'')+'</div>';
       if(rec.sql_command)h+='<div class="rec-sql">'+esc(rec.sql_command)+'</div>';h+='</div>';
+    });
+  }
+  const qRecs=result.query_recommendations||[];
+  if(qRecs.length){
+    h+='<div class="rec-sec-title">Query-Level Recommendations</div>';
+    qRecs.forEach(rec=>{
+      const sev=rec.severity||'LOW';
+      h+='<div class="rec-item '+esc(sev)+'"><div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:6px"><span class="sev '+esc(sev)+'">'+esc(sev)+'</span><span style="font-size:13px;font-weight:600;color:#1e293b">'+esc(rec.title||rec.issue||'')+'</span></div>';
+      if(rec.description)h+='<div class="rec-desc">'+esc(rec.description.replace(/<[^>]+>/g,' ').trim())+'</div>';
+      (rec.sql_operations||[]).forEach(s=>{h+='<div class="rec-sql">'+esc(s)+'</div>';});h+='</div>';
+    });
+  }
+  const iRecs=result.index_recommendations||[];
+  if(iRecs.length){
+    h+='<div class="rec-sec-title">Index Recommendations</div>';
+    iRecs.forEach(rec=>{
+      const sev=rec.severity||'LOW';
+      h+='<div class="rec-item '+esc(sev)+'"><div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:6px"><span class="sev '+esc(sev)+'">'+esc(sev)+'</span><span style="font-size:13px;font-weight:600;color:#1e293b">'+esc(rec.title||rec.issue||'')+'</span></div>';
+      if(rec.description)h+='<div class="rec-desc">'+esc(rec.description.replace(/<[^>]+>/g,' ').trim())+'</div>';
+      (rec.sql_operations||[]).forEach(s=>{h+='<div class="rec-sql">'+esc(s)+'</div>';});h+='</div>';
+    });
+  }
+  const topSqlAn=result.top_sql_analysis||[];
+  if(topSqlAn.length){
+    h+='<div class="rec-sec-title">Top SQL Analysis</div>';
+    topSqlAn.forEach(rec=>{
+      const sev=rec.severity||'INFO';
+      h+='<div class="rec-item '+esc(sev)+'"><div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:6px"><span class="sev '+esc(sev)+'">'+esc(sev)+'</span><span style="font-size:13px;font-weight:600;color:#1e293b">'+esc(rec.title||rec.sql_id||rec.issue||'')+'</span></div>';
+      if(rec.description)h+='<div class="rec-desc">'+esc(rec.description.replace(/<[^>]+>/g,' ').trim())+'</div>';
+      (rec.sql_operations||[]).forEach(s=>{h+='<div class="rec-sql">'+esc(s)+'</div>';});h+='</div>';
     });
   }
   if(result.llm_insights){
@@ -861,7 +1002,8 @@ function renderWaitEventsHTML(data){
   if(sess.length){
     h+='<div class="ts-data-section"><h4>Session Wait Events</h4><div class="dt-wrap"><table class="dt"><thead><tr><th>SID</th><th>Username</th><th>Event</th><th>Wait Class</th><th class="r">Seconds Waiting</th><th>SQL ID</th><th>SQL Text</th></tr></thead><tbody>';
     sess.forEach(r=>{
-      h+='<tr><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td>'+esc(r.EVENT||r.event||'')+'</td><td>'+esc(r.WAIT_CLASS||r.wait_class||'')+'</td><td class="r">'+esc(r.SECONDS_WAITING||r.seconds_waiting||0)+'</td><td style="font-family:monospace">'+esc(r.SQL_ID||r.sql_id||'')+'</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="'+esc(r.SQL_TEXT||r.sql_text||'')+'">'+esc((r.SQL_TEXT||r.sql_text||'').substring(0,80))+'</td></tr>';
+      const _sessWaitSqlId=r.SQL_ID||r.sql_id||'';
+      h+='<tr><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td>'+esc(r.EVENT||r.event||'')+'</td><td>'+esc(r.WAIT_CLASS||r.wait_class||'')+'</td><td class="r">'+esc(r.SECONDS_WAITING||r.seconds_waiting||0)+'</td><td style="font-family:monospace">'+(_sessWaitSqlId?'<a href="#" onclick="lookupFromTable(\''+esc(_sessWaitSqlId).replace(/'/g,"\\'")+'\');return false" style="color:#2563eb;text-decoration:underline;cursor:pointer">'+esc(_sessWaitSqlId)+'</a>':'')+' </td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="'+esc(r.SQL_TEXT||r.sql_text||'')+'">'+esc((r.SQL_TEXT||r.sql_text||'').substring(0,80))+'</td></tr>';
     });
     h+='</tbody></table></div></div>';
   }
@@ -902,7 +1044,8 @@ function renderBlockingHTML(data){
   if(rb.length){
     h+='<div class="ts-data-section"><h4>Root Blockers</h4><div class="dt-wrap"><table class="dt"><thead><tr><th>SID</th><th>Username</th><th class="r">Blocked Count</th><th>SQL ID</th><th>Wait Event</th></tr></thead><tbody>';
     rb.forEach(r=>{
-      h+='<tr><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td class="r">'+esc(r.BLOCKED_COUNT||r.blocked_count||0)+'</td><td style="font-family:monospace">'+esc(r.SQL_ID||r.sql_id||'')+'</td><td>'+esc(r.WAIT_EVENT||r.wait_event||'')+'</td></tr>';
+      const _rbSqlId=r.SQL_ID||r.sql_id||'';
+      h+='<tr><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td class="r">'+esc(r.BLOCKED_COUNT||r.blocked_count||0)+'</td><td style="font-family:monospace">'+(_rbSqlId?'<a href="#" onclick="lookupFromTable(\''+esc(_rbSqlId).replace(/'/g,"\\'")+'\');return false" style="color:#2563eb;text-decoration:underline;cursor:pointer">'+esc(_rbSqlId)+'</a>':'')+'</td><td>'+esc(r.WAIT_EVENT||r.wait_event||'')+'</td></tr>';
     });
     h+='</tbody></table></div></div>';
   }
@@ -912,7 +1055,8 @@ function renderBlockingHTML(data){
     bc.forEach(r=>{
       const level=r.TREE_LEVEL||r.tree_level||0;
       const indent='&nbsp;'.repeat(level*4);
-      h+='<tr><td>'+indent+esc(level)+'</td><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r['SERIAL#']||r.serial||r.SERIAL||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td style="font-family:monospace">'+esc(r.SQL_ID||r.sql_id||'')+'</td><td>'+esc(r.WAIT_EVENT||r.wait_event||'')+'</td><td class="r">'+esc(r.SECONDS_WAITING||r.seconds_waiting||0)+'</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="'+esc(r.SQL_TEXT||r.sql_text||'')+'">'+esc((r.SQL_TEXT||r.sql_text||'').substring(0,80))+'</td></tr>';
+      const _bcSqlId=r.SQL_ID||r.sql_id||'';
+      h+='<tr><td>'+indent+esc(level)+'</td><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r['SERIAL#']||r.serial||r.SERIAL||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td style="font-family:monospace">'+(_bcSqlId?'<a href="#" onclick="lookupFromTable(\''+esc(_bcSqlId).replace(/'/g,"\\'")+'\');return false" style="color:#2563eb;text-decoration:underline;cursor:pointer">'+esc(_bcSqlId)+'</a>':'')+'</td><td>'+esc(r.WAIT_EVENT||r.wait_event||'')+'</td><td class="r">'+esc(r.SECONDS_WAITING||r.seconds_waiting||0)+'</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="'+esc(r.SQL_TEXT||r.sql_text||'')+'">'+esc((r.SQL_TEXT||r.sql_text||'').substring(0,80))+'</td></tr>';
     });
     h+='</tbody></table></div></div>';
   }
@@ -920,7 +1064,8 @@ function renderBlockingHTML(data){
   if(waiters.length){
     h+='<div class="ts-data-section"><h4>Waiters</h4><div class="dt-wrap"><table class="dt"><thead><tr><th>SID</th><th>Username</th><th>Wait Event</th><th class="r">Seconds Waiting</th><th>SQL ID</th></tr></thead><tbody>';
     waiters.forEach(r=>{
-      h+='<tr><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td>'+esc(r.WAIT_EVENT||r.wait_event||r.EVENT||r.event||'')+'</td><td class="r">'+esc(r.SECONDS_WAITING||r.seconds_waiting||0)+'</td><td style="font-family:monospace">'+esc(r.SQL_ID||r.sql_id||'')+'</td></tr>';
+      const _wSqlId=r.SQL_ID||r.sql_id||'';
+      h+='<tr><td>'+esc(r.SID||r.sid||'')+'</td><td>'+esc(r.USERNAME||r.username||'')+'</td><td>'+esc(r.WAIT_EVENT||r.wait_event||r.EVENT||r.event||'')+'</td><td class="r">'+esc(r.SECONDS_WAITING||r.seconds_waiting||0)+'</td><td style="font-family:monospace">'+(_wSqlId?'<a href="#" onclick="lookupFromTable(\''+esc(_wSqlId).replace(/'/g,"\\'")+'\');return false" style="color:#2563eb;text-decoration:underline;cursor:pointer">'+esc(_wSqlId)+'</a>':'')+'</td></tr>';
     });
     h+='</tbody></table></div></div>';
   }
@@ -943,7 +1088,8 @@ async function runASH(){
   const ld=document.getElementById('ashLoading'),res=document.getElementById('ashResult');
   ld.classList.add('show');res.innerHTML='';
   try{
-    const r=await fetch(`${API}/database/${enc(currentConn)}/ash?minutes=30`,{headers:{'x-api-key':tok()}});
+    const mins=document.getElementById('ashMinutes').value||30;
+    const r=await fetch(`${API}/database/${enc(currentConn)}/ash?minutes=${enc(mins)}`,{headers:{'x-api-key':tok()}});
     const d=await r.json();
     if(r.ok){
       const data=d.data||d;
@@ -979,7 +1125,7 @@ function renderASHHTML(data){
     topSql.forEach(r=>{
       const sqlId=r.SQL_ID||r.sql_id||r.queryid||'';
       const sqlText=sqlMap[sqlId]||r.sql_text||r.SQL_TEXT||r.query_text||r.QUERY_TEXT||'';
-      h+='<tr><td style="font-family:monospace">'+esc(sqlId)+'</td><td class="r">'+esc(r.SAMPLE_COUNT||r.sample_count||r.calls||0)+'</td><td class="r">'+esc(r.PCT_DB_TIME||r.pct_db_time||'')+(r.PCT_DB_TIME||r.pct_db_time?'%':'')+'</td><td>'+esc(r.LAST_EVENT||r.last_event||r.wait_event||'')+'</td><td>'+esc(r.LAST_WAIT_CLASS||r.last_wait_class||r.wait_event_type||'')+'</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(sqlText)+'">'+esc(String(sqlText).substring(0,100))+'</td></tr>';
+      h+='<tr><td style="font-family:monospace">'+(sqlId?'<a href="#" onclick="lookupFromTable(\''+esc(sqlId).replace(/'/g,"\\'")+'\');return false" style="color:#2563eb;text-decoration:underline;cursor:pointer">'+esc(sqlId)+'</a>':'')+' </td><td class="r">'+esc(r.SAMPLE_COUNT||r.sample_count||r.calls||0)+'</td><td class="r">'+esc(r.PCT_DB_TIME||r.pct_db_time||'')+(r.PCT_DB_TIME||r.pct_db_time?'%':'')+'</td><td>'+esc(r.LAST_EVENT||r.last_event||r.wait_event||'')+'</td><td>'+esc(r.LAST_WAIT_CLASS||r.last_wait_class||r.wait_event_type||'')+'</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(sqlText)+'">'+esc(String(sqlText).substring(0,100))+'</td></tr>';
     });
     h+='</tbody></table></div></div>';
   }
@@ -1037,8 +1183,25 @@ async function doLiveFetch(){
   try{
     const r=await fetch(`${API}/database/${enc(currentConn)}/metrics`,{headers:{'x-api-key':tok()}});
     const d=await r.json();
-    const text=typeof (r.ok?(d.metrics||d):d.detail)==='string'?(r.ok?(d.metrics||d):d.detail):JSON.stringify(r.ok?(d.metrics||d):d.detail,null,2);
-    res.innerHTML='<div style="font-weight:600;color:#1e293b;margin-bottom:8px">Live Metrics</div><pre class="ts-pre">'+esc(text)+'</pre>';
+    if(r.ok){
+      const data=d.metrics||d;
+      let html='<div style="font-weight:600;color:#1e293b;margin-bottom:8px">Live Metrics</div>';
+      if(typeof data==='object'&&!Array.isArray(data)){
+        let hasTable=false;
+        Object.entries(data).forEach(([key,val])=>{
+          if(Array.isArray(val)&&val.length&&typeof val[0]==='object'){
+            hasTable=true;
+            html+=autoTable(key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),val);
+          }
+        });
+        if(!hasTable)html+='<pre class="ts-pre">'+esc(JSON.stringify(data,null,2))+'</pre>';
+      }else{
+        html+='<pre class="ts-pre">'+esc(typeof data==='string'?data:JSON.stringify(data,null,2))+'</pre>';
+      }
+      res.innerHTML=html;
+    }else{
+      res.innerHTML='<div style="color:#dc2626;padding:10px">Error: '+esc(d.detail||'Failed to fetch metrics')+'</div>';
+    }
     res.classList.add('show');
   }catch(e){
     res.innerHTML='<div style="color:#dc2626;padding:10px">Error: '+esc(e.message)+'</div>';
@@ -1052,6 +1215,39 @@ async function doSqlLookup(){
   if(!currentConn){alert('Please connect first');return;}
   const sqlId=(document.getElementById('lookupVal').value||'').trim();if(!sqlId){alert('Please enter a SQL ID');return;}
   const ld=document.getElementById('sqlLookupLoading'),lt=document.getElementById('sqlLookupLoadText');
+  const lookupType=document.getElementById('lookupType').value;
+  if(lookupType==='session_id'){
+    lt.textContent='Looking up Session ID...';ld.classList.add('show');document.getElementById('sqlIdPanel').style.display='none';
+    try{
+      const r=await fetch(`${API}/database/${enc(currentConn)}/session-info?sid=${enc(sqlId)}`,{headers:{'x-api-key':tok()}});
+      const d=await r.json();ld.classList.remove('show');
+      if(r.ok){
+        const data=d.data||d;
+        const res=document.getElementById('sqlLiveFetchResult');
+        let html='<div style="font-weight:600;color:#1e293b;margin-bottom:8px">Session Details — SID '+esc(sqlId)+'</div>';
+        if(typeof data==='object'){
+          Object.entries(data).forEach(([key,val])=>{
+            if(Array.isArray(val)&&val.length&&typeof val[0]==='object'){
+              html+=autoTable(key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),val);
+            }else if(typeof val==='object'&&val!==null&&!Array.isArray(val)){
+              html+='<div class="ts-data-section"><h4>'+esc(key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()))+'</h4><pre class="ts-pre">'+esc(JSON.stringify(val,null,2))+'</pre></div>';
+            }
+          });
+        }
+        res.innerHTML=html||'<pre class="ts-pre">'+esc(JSON.stringify(data,null,2))+'</pre>';
+        res.classList.add('show');
+      }else{
+        const res=document.getElementById('sqlLiveFetchResult');
+        res.innerHTML='<div style="color:#dc2626;padding:10px">Error: '+esc(d.detail||'Session lookup failed')+'</div>';
+        res.classList.add('show');
+      }
+    }catch(e){ld.classList.remove('show');
+      const res=document.getElementById('sqlLiveFetchResult');
+      res.innerHTML='<div style="color:#dc2626;padding:10px">Error: '+esc(e.message)+'</div>';
+      res.classList.add('show');
+    }
+    return;
+  }
   lt.textContent='Looking up SQL ID...';ld.classList.add('show');document.getElementById('sqlIdPanel').style.display='none';
   try{
     const r=await fetch(`${API}/database/${enc(currentConn)}/sqlid-info?sql_id=${enc(sqlId)}`,{headers:{'x-api-key':tok()}});
@@ -1113,12 +1309,115 @@ function buildSummary(data,sqlId){
 }
 
 function renderSqlId(data,sqlId){
-  document.getElementById('sqlIdPanel').style.display='block';document.getElementById('sqlIdPill').textContent=sqlId;
+  document.getElementById('sqlIdPanel').style.display='block';
+  document.getElementById('sqlIdPill').textContent=sqlId;
+  // Set header title based on DB type
+  const dbType=(data.database_type||'').toUpperCase()||'SQL';
+  document.getElementById('sqlIdPanelTitle').textContent=(dbType||'SQL')+' Details —';
   const st=(data.sql_text||[{}])[0];
   document.getElementById('sqlTextBox').textContent=st.SQL_FULLTEXT||st.sql_fulltext||st.SQL_TEXT||st.sql_text||'(SQL text not available)';
-  renderStatsHealth(data);renderAnalysisCov(data);renderExecStats(data);renderWarnings(data);renderPlans(data);renderIdxCov(data);
+  renderStatsHealth(data);renderAnalysisCov(data);renderExecStats(data);renderWarnings(data);renderPlans(data);renderIdxCov(data);renderObjStats(data);
   document.getElementById('aiOutPanel').style.display='none';
   document.getElementById('sqlIdPanel').scrollIntoView({behavior:'smooth'});
+}
+
+function renderObjStats(data){
+  const container=document.getElementById('objStatsContainer');
+  if(!container)return;
+  const obj=data.object_statistics||{};
+  let h='';
+
+  function collapsibleTable(id,title,icon,cols,rows,keyMap){
+    if(!rows||!rows.length)return'';
+    let th='<tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr>';
+    let tb=rows.map(r=>'<tr>'+cols.map(c=>{
+      const keys=keyMap&&keyMap[c]?keyMap[c]:[c.toUpperCase().replace(/ /g,'_'),c.toLowerCase().replace(/ /g,'_')];
+      let v='';for(const k of keys){if(r[k]!=null){v=r[k];break;}}
+      return'<td>'+esc(v)+'</td>';
+    }).join('')+'</tr>').join('');
+    return`<div class="card card-collapsible collapsed" id="${id}">
+      <div class="card-title" onclick="toggleCard('${id}')">
+        <span>${icon} ${esc(title)} <span style="font-size:12px;font-weight:400;color:#94a3b8">(${rows.length} row${rows.length!==1?'s':''})</span></span>
+        <span class="card-chev">&#9660;</span>
+      </div>
+      <div class="card-body" style="overflow-x:auto">
+        <table class="dt"><thead>${th}</thead><tbody>${tb}</tbody></table>
+      </div>
+    </div>`;
+  }
+
+  // Table Statistics
+  const tableStats=obj.table_stats||[];
+  h+=collapsibleTable('cardTblStats','Table Statistics','&#128218;',
+    ['Table Name','Num Rows','Blocks','Avg Row Len','Last Analyzed','Stale Stats'],
+    tableStats,{
+      'Table Name':['TABLE_NAME','table_name'],
+      'Num Rows':['NUM_ROWS','num_rows'],
+      'Blocks':['BLOCKS','blocks'],
+      'Avg Row Len':['AVG_ROW_LEN','avg_row_len'],
+      'Last Analyzed':['LAST_ANALYZED','last_analyzed'],
+      'Stale Stats':['STALE_STATS','stale_stats']
+    });
+
+  // Index Statistics
+  const indexStats=obj.index_stats||[];
+  h+=collapsibleTable('cardIdxStats','Index Statistics','&#128273;',
+    ['Index Name','Table Name','Uniqueness','Num Rows','Leaf Blocks','Last Analyzed','Status'],
+    indexStats,{
+      'Index Name':['INDEX_NAME','index_name'],
+      'Table Name':['TABLE_NAME','table_name'],
+      'Uniqueness':['UNIQUENESS','uniqueness'],
+      'Num Rows':['NUM_ROWS','num_rows'],
+      'Leaf Blocks':['LEAF_BLOCKS','leaf_blocks'],
+      'Last Analyzed':['LAST_ANALYZED','last_analyzed'],
+      'Status':['STATUS','status']
+    });
+
+  // Column Statistics
+  const colStats=obj.column_stats||[];
+  h+=collapsibleTable('cardColStats','Column Statistics','&#128202;',
+    ['Table Name','Column Name','Num Distinct','Num Nulls','Density','Avg Col Len','Last Analyzed'],
+    colStats,{
+      'Table Name':['TABLE_NAME','table_name'],
+      'Column Name':['COLUMN_NAME','column_name'],
+      'Num Distinct':['NUM_DISTINCT','num_distinct'],
+      'Num Nulls':['NUM_NULLS','num_nulls'],
+      'Density':['DENSITY','density'],
+      'Avg Col Len':['AVG_COL_LEN','avg_col_len'],
+      'Last Analyzed':['LAST_ANALYZED','last_analyzed']
+    });
+
+  // Table Partition Statistics
+  const tPartStats=obj.table_partition_stats||[];
+  h+=collapsibleTable('cardTblPartStats','Table Partition Statistics','&#127872;',
+    ['Table Name','Partition Name','Num Rows','Blocks','Last Analyzed','Stale Stats'],
+    tPartStats,{
+      'Table Name':['TABLE_NAME','table_name'],
+      'Partition Name':['PARTITION_NAME','partition_name'],
+      'Num Rows':['NUM_ROWS','num_rows'],
+      'Blocks':['BLOCKS','blocks'],
+      'Last Analyzed':['LAST_ANALYZED','last_analyzed'],
+      'Stale Stats':['STALE_STATS','stale_stats']
+    });
+
+  // Index Partition Statistics
+  const iPartStats=obj.index_partition_stats||[];
+  h+=collapsibleTable('cardIdxPartStats','Index Partition Statistics','&#127872;',
+    ['Index Name','Partition Name','Num Rows','Leaf Blocks','Last Analyzed','Status'],
+    iPartStats,{
+      'Index Name':['INDEX_NAME','index_name'],
+      'Partition Name':['PARTITION_NAME','partition_name'],
+      'Num Rows':['NUM_ROWS','num_rows'],
+      'Leaf Blocks':['LEAF_BLOCKS','leaf_blocks'],
+      'Last Analyzed':['LAST_ANALYZED','last_analyzed'],
+      'Status':['STATUS','status']
+    });
+
+  if(h){
+    container.innerHTML='<div class="rec-sec-title" style="margin-top:18px">&#128202; Object Statistics</div>'+h;
+  } else {
+    container.innerHTML='';
+  }
 }
 
 function renderStatsHealth(data){
@@ -1183,6 +1482,9 @@ function renderPlans(data){
     const phv=plan.plan_hash_value||'?',child=plan.child_number!==undefined?plan.child_number:0,es=plan.exec_stats||{},rows=plan.plan_rows||planRows;
     html+='<div style="margin-bottom:'+(pi<plans.length-1?'14px':'0')+'">';
     html+='<div class="plan-meta">Plan Hash: <strong>'+esc(phv)+'</strong> | Child#: '+esc(child)+' | Execs: '+esc(es.executions||0)+' | Avg Elapsed: <strong>'+esc(es.avg_elapsed_ms||0)+'ms</strong></div>';
+    const _sqlIdForPlan=(document.getElementById('lookupVal').value||'').trim();
+    html+='<button class="btn-sm" style="margin:6px 14px" onclick="genPlanFix(\''+esc(_sqlIdForPlan).replace(/'/g,"\\'")+'\',\''+esc(phv).replace(/'/g,"\\'")+'\')">Generate Plan Baseline/Profile</button>';
+    html+='<div id="planFixResult_'+esc(phv)+'" style="display:none;margin:0 14px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:12px"></div>';
     if(es.executions!==undefined){html+='<div class="plan-stats"><strong>Execution Stats (AWR)</strong> -- <span>Executions: <strong>'+esc(es.executions||0)+'</strong></span><span>Avg Elapsed: <strong>'+esc(es.avg_elapsed_ms||0)+'ms</strong></span><span>Avg CPU: <strong>'+esc(es.avg_cpu_ms||0)+'ms</strong></span><span>Avg Buffer Gets: <strong>'+esc(es.avg_buffer_gets||0)+'</strong></span><span>Avg Disk Reads: <strong>'+esc(es.avg_disk_reads||0)+'</strong></span><span>Avg Rows: <strong>'+esc(es.avg_rows||0)+'</strong></span></div>';}
     if(rows.length){const flow=buildFlow(rows);if(flow)html+='<div class="plan-flow">'+esc(flow)+'</div>';}
     html+=buildPlanTable(rows);html+='</div>';
@@ -1254,6 +1556,7 @@ async function runRCA(){
   const toTime=document.getElementById('rcaTo').value;
   if(!fromTime||!toTime){alert('Please select both From and To times.');return;}
   const ld=document.getElementById('rcaLoading'),res=document.getElementById('rcaResult');
+  const _rcaBtn=document.querySelector('#panel-rca .btn-primary');_rcaBtn.disabled=true;_rcaBtn.style.opacity='0.6';
   ld.classList.add('show');res.innerHTML='';
   try{
     const r=await fetch(`${API}/database/${enc(currentConn)}/rca`,{method:'POST',headers:jh(),body:JSON.stringify({from_time:fromTime,to_time:toTime})});
@@ -1264,7 +1567,7 @@ async function runRCA(){
       res.innerHTML='<div style="color:#dc2626;padding:10px">Error: '+esc(d.detail||'RCA analysis failed')+'</div>';
     }
   }catch(e){res.innerHTML='<div style="color:#dc2626;padding:10px">Error: '+esc(e.message)+'</div>';}
-  finally{ld.classList.remove('show');}
+  finally{ld.classList.remove('show');_rcaBtn.disabled=false;_rcaBtn.style.opacity='';}
 }
 
 function renderRCAHTML(result){
@@ -1347,6 +1650,71 @@ function renderRCAHTML(result){
 
   if(!h)h='<div style="color:#64748b;padding:12px;text-align:center">No RCA data returned.</div>';
   return h;
+}
+
+/* ===== GENERATE PLAN FIX ===== */
+async function genPlanFix(sqlId,phv){
+  if(!currentConn){alert('Please connect first');return;}
+  const resDiv=document.getElementById('planFixResult_'+phv);
+  if(!resDiv)return;
+  resDiv.style.display='block';resDiv.innerHTML='<div class="loading-row show"><div class="spinner"></div> Generating plan fix...</div>';
+  try{
+    const r=await fetch(`${API}/database/${enc(currentConn)}/generate-plan-fix?sql_id=${enc(sqlId)}&plan_hash_value=${enc(phv)}`,{headers:{'x-api-key':tok()}});
+    const d=await r.json();
+    if(r.ok){
+      const data=d.data||d;
+      let html='<div style="font-weight:600;color:#1e293b;margin-bottom:6px">Plan Fix Scripts</div>';
+      if(typeof data==='string'){html+='<pre class="ts-pre">'+esc(data)+'</pre>';}
+      else if(typeof data==='object'){
+        Object.entries(data).forEach(([key,val])=>{
+          html+='<div style="font-weight:500;color:#475569;margin:6px 0 3px">'+esc(key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()))+'</div>';
+          if(typeof val==='string')html+='<pre class="ts-pre">'+esc(val)+'</pre>';
+          else html+='<pre class="ts-pre">'+esc(JSON.stringify(val,null,2))+'</pre>';
+        });
+      }
+      resDiv.innerHTML=html;
+    }else{
+      resDiv.innerHTML='<div style="color:#dc2626">Error: '+esc(d.detail||'Failed to generate plan fix')+'</div>';
+    }
+  }catch(e){resDiv.innerHTML='<div style="color:#dc2626">Error: '+esc(e.message)+'</div>';}
+}
+
+/* ===== LOOKUP FROM TABLE ===== */
+function lookupFromTable(sqlId){
+  if(!sqlId)return;
+  document.getElementById('lookupVal').value=sqlId;
+  document.getElementById('lookupType').value='sql_id';
+  switchTsSubTab('sql',document.getElementById('tsSubSql'));
+  doSqlLookup();
+}
+
+/* ===== LOOKUP TYPE CHANGE ===== */
+function onLookupTypeChange(){
+  const t=document.getElementById('lookupType').value;
+  document.getElementById('lookupVal').placeholder=t==='session_id'?'e.g. 1234':'e.g. 2x2j82x65mk54';
+}
+
+/* ===== SAVE AS PROFILE ===== */
+async function saveAsProfile(){
+  const d=document.getElementById('saveProfileDiv')._data;
+  if(!d)return;
+  const appName=document.getElementById('saveAppName').value.trim()||'Default';
+  const envName=document.getElementById('saveEnvName').value.trim()||'Default';
+  try{
+    const r=await fetch(`${API}/profiles`,{method:'POST',headers:jh(),body:JSON.stringify({
+      app_name:appName,env_name:envName,db_name:d.database,
+      database_type:d.database_type,host:d.host,port:d.port,
+      database:d.database,user:d.user,password:d.password
+    })});
+    if(r.ok){
+      showSMsg('manualMsg','ok','Profile saved!');
+      document.getElementById('saveProfileDiv').style.display='none';
+      loadProfiles();
+    }else{
+      const e=await r.json();
+      showSMsg('manualMsg','err','Save failed: '+(e.detail||''));
+    }
+  }catch(e){showSMsg('manualMsg','err','Save failed: '+e.message);}
 }
 
 /* ===== SETTINGS ===== */
