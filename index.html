@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI DBA Assistant</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:100vh;font-size:14px;color:#1e293b}
+#loginOverlay{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a8a,#1e40af);display:flex;align-items:center;justify-content:center;z-index:9999}
+#loginOverlay.hidden{display:none}
+.login-card{background:#fff;border-radius:12px;padding:40px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.login-card h2{color:#1e3a8a;font-size:22px;margin-bottom:6px}
+.login-card p{color:#64748b;font-size:13px;margin-bottom:24px}
+.login-card input{width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:14px;margin-bottom:12px}
+.login-card input:focus{outline:none;border-color:#2563eb}
+.login-btn{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer}
+.login-btn:hover{background:#1d4ed8}
+#loginError{color:#dc2626;font-size:12px;margin-top:8px;min-height:18px}
+.app-wrapper{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.app-header{background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.app-header h1{font-size:17px;font-weight:700}
+.app-header p{font-size:11px;opacity:.8;margin-top:1px}
+.logout-btn{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer}
+#connectionBanner{background:#16a34a;color:#fff;padding:9px 20px;display:none;align-items:center;gap:10px;font-size:13px;font-weight:500;flex-shrink:0}
+#connectionBanner.show{display:flex}
+.conn-dot{width:9px;height:9px;background:#86efac;border-radius:50%;flex-shrink:0}
+.disconn-btn{background:#dc2626;color:#fff;border:none;padding:5px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto}
+.app-body{display:flex;flex:1;overflow:hidden;position:relative}
+.sidebar{width:300px;min-width:300px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;overflow:hidden;transition:width .25s,min-width .25s;flex-shrink:0}
+.sidebar.collapsed{width:0;min-width:0}
+.sidebar-head{padding:14px 16px 0;border-bottom:1px solid #e2e8f0;flex-shrink:0}
+.sidebar-head h2{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:10px}
+.stabs{display:flex;gap:0}
+.stab{padding:8px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:#64748b;border-bottom:2px solid transparent;font-weight:500;white-space:nowrap}
+.stab.active{color:#2563eb;border-bottom-color:#2563eb}
+.sidebar-body{flex:1;overflow-y:auto;padding:14px}
+.fg{margin-bottom:10px}
+.fg label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+.fg select,.fg input[type=text],.fg input[type=password],.fg input[type=number]{width:100%;padding:7px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:13px;background:#fff}
+.fg select:focus,.fg input:focus{outline:none;border-color:#2563eb}
+.profile-preview{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#166534;font-weight:500;white-space:pre-line}
+.connect-row{display:flex;gap:8px}
+.btn-green{flex:1;background:#16a34a;color:#fff;border:none;padding:9px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.btn-green:hover{background:#15803d}
+.btn-del{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:9px 11px;border-radius:6px;cursor:pointer;font-size:14px}
+.sidebar-msg{margin-top:10px;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;display:none}
+.sidebar-msg.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;display:block}
+.sidebar-msg.err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;display:block}
+.sidebar-msg.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;display:block}
+.conn-info-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;margin-top:12px;display:none}
+.conn-info-lbl{font-size:12px;font-weight:600;color:#166534;margin-bottom:6px}
+.btn-disconn-sm{width:100%;background:#dc2626;color:#fff;border:none;padding:7px;border-radius:5px;font-size:12px;cursor:pointer}
+.collapse-tab{position:absolute;left:300px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;width:16px;height:44px;border-radius:0 5px 5px 0;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;font-size:10px;border:none;transition:left .25s}
+.sidebar.collapsed~.collapse-tab{left:0}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.pre-connect{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;gap:12px;padding:40px;text-align:center}
+.pre-connect .ico{font-size:52px}
+.pre-connect h3{font-size:18px;color:#475569}
+.health-panel{padding:14px 18px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0}
+.health-panel-title{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.health-terminal{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:12px 14px;font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;max-height:240px;overflow-y:auto;line-height:1.6}
+.health-ph{color:#64748b;font-size:13px;text-align:center;padding:20px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:8px}
+.subtab-bar{display:flex;background:#fff;border-bottom:2px solid #e2e8f0;flex-shrink:0;padding:0 18px}
+.subtab{padding:10px 18px;border:none;background:none;cursor:pointer;font-size:14px;color:#64748b;border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:500;transition:color .2s;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.subtab:hover:not(.locked){color:#2563eb}
+.subtab.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
+.subtab.locked{color:#cbd5e1;cursor:not-allowed}
+.panels{flex:1;overflow:hidden}
+.panel{display:none;height:100%;overflow-y:auto;padding:18px}
+.panel.active{display:block}
+.ask-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:14px}
+.ask-card textarea{width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:9px 11px;font-size:14px;font-family:inherit;resize:vertical;min-height:80px}
+.ask-card textarea:focus{outline:none;border-color:#2563eb}
+.response-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-top:10px;display:none;font-size:13px;line-height:1.7;color:#374151}
+.response-box.show{display:block}
+.rec-bar{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rec-out{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;display:none}
+.rec-out.show{display:block}
+.rec-sec-title{font-size:14px;font-weight:700;color:#1e293b;margin:14px 0 8px;padding-bottom:5px;border-bottom:2px solid #2563eb}
+.rec-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin-bottom:8px;border-left:4px solid #94a3b8}
+.rec-item.HIGH{border-left-color:#dc2626}
+.rec-item.MEDIUM{border-left-color:#f59e0b}
+.rec-item.LOW{border-left-color:#22c55e}
+.rec-item.INFO{border-left-color:#60a5fa}
+.sev{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.sev.HIGH{background:#fee2e2;color:#dc2626}
+.sev.MEDIUM{background:#fef3c7;color:#d97706}
+.sev.LOW{background:#dcfce7;color:#16a34a}
+.sev.INFO{background:#dbeafe;color:#1d4ed8}
+.rec-desc{font-size:12px;color:#475569;margin:6px 0;line-height:1.5}
+.rec-sql{background:#0f172a;color:#e2e8f0;padding:7px 10px;border-radius:4px;font-family:'Courier New',monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;margin:3px 0}
+.ts-head h2{font-size:20px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.ts-head p{color:#64748b;font-size:13px;margin-bottom:14px}
+.ts-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.ts-btn{padding:8px 16px;border:1.5px solid #d1d5db;background:#fff;border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;transition:all .2s}
+.ts-btn:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff}
+.ts-result{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:16px;display:none}
+.ts-result.show{display:block}
+.ts-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;max-height:360px;overflow-y:auto}
+.sql-lookup{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:16px}
+.sql-lookup h3{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:11px;display:flex;align-items:center;gap:6px}
+.lookup-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.lookup-row .fg{margin-bottom:0}
+.btn-blue{padding:8px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.btn-blue:hover{background:#1d4ed8}
+.btn-purple{padding:8px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.btn-pink{padding:8px 14px;background:#db2777;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.btn-outline-xs{padding:5px 12px;border:1.5px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:14px;cursor:pointer;font-size:12px;font-weight:500;margin-top:8px;display:inline-flex;align-items:center;gap:4px}
+.sqlid-panel{margin-top:14px}
+.sqlid-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.sqlid-hdr h3{font-size:15px;font-weight:700;color:#1e293b}
+.sql-id-pill{background:#dbeafe;color:#1d4ed8;padding:2px 10px;border-radius:11px;font-size:12px;font-weight:600;font-family:monospace}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;overflow:hidden}
+.card-title{padding:9px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;gap:6px}
+.sql-text-box{background:#1e293b;color:#e2e8f0;padding:11px 14px;font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;max-height:130px;overflow-y:auto;line-height:1.6;word-break:break-all}
+.stats-health-row{background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sh-label{font-size:13px;font-weight:700;color:#92400e}
+.sh-badge{padding:3px 10px;border-radius:11px;font-size:12px;font-weight:500;background:#fff7ed;border:1px solid #fde68a;color:#78350f;white-space:nowrap}
+.sh-badge.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.analysis-cov-row{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ac-label{font-size:13px;font-weight:700;color:#166534}
+.ac-badge{padding:3px 10px;border-radius:11px;font-size:12px;font-weight:500;background:#fff;border:1px solid #86efac;color:#166534;white-space:nowrap}
+.ac-badge.no{background:#fef2f2;border-color:#fecaca;color:#dc2626}
+.dt{width:100%;border-collapse:collapse;font-size:12px}
+.dt th{background:#f8fafc;padding:7px 11px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;white-space:nowrap}
+.dt td{padding:6px 11px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap}
+.dt tr:last-child td{border-bottom:none}
+.dt tr:hover td{background:#f8fafc}
+.dt .r{text-align:right}
+.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 14px;margin-bottom:12px}
+.warn-item{font-size:12px;color:#92400e;display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.plan-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;overflow:hidden}
+.plan-card-hdr{padding:9px 14px;border-bottom:1px solid #e2e8f0;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#374151;user-select:none}
+.plan-card-body{display:none}
+.plan-card-body.open{display:block}
+.plan-meta{padding:9px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#1e293b}
+.plan-stats{padding:7px 14px;font-size:12px;color:#1e293b;border-bottom:1px solid #e2e8f0;background:#fafafa}
+.plan-stats span{margin-right:16px}
+.plan-flow{padding:7px 14px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;font-size:11px;font-family:'Courier New',monospace;color:#475569;white-space:pre-wrap;word-break:break-all;max-height:55px;overflow-y:auto}
+.plan-tbl-wrap{background:#0f172a;overflow-x:auto;max-height:480px;overflow-y:auto}
+.plan-tbl{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:12px}
+.plan-tbl th{background:#1e293b;color:#94a3b8;padding:6px 10px;text-align:left;font-size:11px;position:sticky;top:0;z-index:2;white-space:nowrap}
+.plan-tbl td{padding:4px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:#e2e8f0;vertical-align:middle}
+.plan-tbl tr:hover td{background:rgba(255,255,255,.04)}
+.op-fts{color:#f87171}
+.op-index{color:#4ade80}
+.op-hash{color:#60a5fa}
+.op-nested{color:#c084fc}
+.op-sort{color:#fbbf24}
+.op-other{color:#e2e8f0}
+.op-opts{color:#f59e0b}
+.plan-obj{color:#86efac}
+.cost-hi{color:#f87171}
+.cost-med{color:#fbbf24}
+.cost-lo{color:#94a3b8}
+.cost-bar-wrap{display:flex;align-items:center;gap:5px}
+.cost-bar{height:7px;border-radius:2px;min-width:1px}
+.cost-bar.hi{background:#ef4444}
+.cost-bar.md{background:#f59e0b}
+.cost-bar.lo{background:#22c55e}
+.pred-tr td{background:#1a2744 !important;color:#fbbf24;font-size:11px;padding:3px 14px;white-space:normal;word-break:break-word}
+.pred-tr .acc{color:#60a5fa}
+.fts-banner{background:#dc2626;color:#fff;padding:7px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px}
+.plan-legend{padding:7px 14px;background:#1e293b;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px}
+.leg-item{display:flex;align-items:center;gap:4px;color:#94a3b8}
+.leg-dot{width:11px;height:11px;border-radius:2px;flex-shrink:0}
+.idx-cov-msg{margin:0 14px 10px;padding:8px 12px;border-radius:6px;font-size:12px;display:flex;align-items:flex-start;gap:7px}
+.idx-cov-msg.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.idx-cov-msg.warn{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+.pred-cols-line{padding:7px 14px;font-size:12px;border-bottom:1px solid #e2e8f0;color:#475569}
+.ai-output{background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-top:12px;overflow:hidden}
+.ai-body{padding:14px;font-size:13px;line-height:1.7;color:#374151;white-space:pre-wrap;max-height:500px;overflow-y:auto}
+.loading-row{display:none;align-items:center;gap:8px;color:#64748b;font-size:13px;padding:12px 0}
+.loading-row.show{display:flex}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn-primary{padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-primary:hover{background:#1d4ed8}
+.btn-sm{padding:5px 11px;font-size:12px;border:1px solid #e2e8f0;background:#fff;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.btn-sm:hover{background:#f8fafc}
+.settings-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:14px}
+.settings-card h3{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:12px}
+.info-box{background:#fff8e1;border:1px solid #ffc107;border-radius:6px;padding:11px;font-size:13px;color:#856404;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<div id="loginOverlay">
+  <div class="login-card">
+    <h2>🤖 AI DBA Assistant</h2>
+    <p>Sign in to access the performance dashboard</p>
+    <input type="text" id="loginUser" placeholder="Username" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<div class="app-wrapper">
+  <div class="app-header">
+    <div>
+      <h1>🤖 AI powered DBA Assistant</h1>
+      <p>Intelligent multi-database performance analysis and recommendations</p>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+
+  <div id="connectionBanner">
+    <div class="conn-dot"></div>
+    <span id="connBannerText">Connected</span>
+    <button class="disconn-btn" onclick="disconnectDB()">⚡ Disconnect</button>
+  </div>
+
+  <div class="app-body">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <h2>DB Connections</h2>
+        <div class="stabs">
+          <button class="stab active" id="stab-profiles" onclick="switchSidebarTab('profiles',this)">⚡ Saved Profiles</button>
+          <button class="stab" id="stab-manual" onclick="switchSidebarTab('manual',this)">🔌 Manual Connect</button>
+        </div>
+      </div>
+      <div class="sidebar-body">
+        <div id="spanel-profiles">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:13px;font-weight:700;color:#374151">⚡ Quick Connect from Saved Profiles</span>
+            <span style="font-size:11px;color:#64748b">🔒 AES encrypted</span>
+          </div>
+          <div class="fg"><label>Application</label><select id="appSelect" onchange="onAppChange()"><option value="">Loading...</option></select></div>
+          <div class="fg"><label>Environment</label><select id="envSelect" onchange="onEnvChange()"><option value="">—</option></select></div>
+          <div class="fg"><label>Database</label><select id="dbSelect" onchange="onDbChange()"><option value="">—</option></select></div>
+          <div class="profile-preview" id="profilePreview">Select a profile above</div>
+          <div class="connect-row">
+            <button class="btn-green" id="quickConnBtn" onclick="quickConnect()">⚡ Connect</button>
+            <button class="btn-del" onclick="deleteProfile()">🗑</button>
+          </div>
+          <div id="profileMsg" class="sidebar-msg"></div>
+        </div>
+        <div id="spanel-manual" style="display:none">
+          <div class="fg"><label>Database Type</label>
+            <select id="dbType" onchange="onDbTypeChange()">
+              <option value="postgresql">PostgreSQL</option>
+              <option value="oracle">Oracle</option>
+            </select>
+          </div>
+          <div class="fg"><label>Host *</label><input type="text" id="mhost" placeholder="localhost"></div>
+          <div class="fg"><label>Port *</label><input type="number" id="mport" value="5432" placeholder="5432"></div>
+          <div class="fg"><label id="dbFieldLabel">Database *</label><input type="text" id="mdatabase" placeholder="mydb"></div>
+          <div class="fg"><label>User *</label><input type="text" id="muser" placeholder="postgres"></div>
+          <div class="fg"><label>Password *</label><input type="password" id="mpassword" placeholder="••••••••"></div>
+          <div class="fg"><label>Connection ID (optional)</label><input type="text" id="mconnId" placeholder="mydb-prod"></div>
+          <div id="sidTypeRow" class="fg" style="display:none">
+            <label>Connection Type</label>
+            <div style="display:flex;gap:14px;margin-top:4px">
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="sidType" id="sidService" value="service" checked style="width:auto;margin:0"> Service Name</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="sidType" id="sidSid" value="sid" style="width:auto;margin:0"> SID</label>
+            </div>
+          </div>
+          <div id="sysdbaRow" class="fg" style="display:none">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="sysdba" style="width:auto;margin:0"> <span>Connect AS SYSDBA</span>
+            </label>
+          </div>
+          <button class="btn-green" style="width:100%" id="manualConnBtn" onclick="manualConnect()">🔌 Connect to Database</button>
+          <div id="manualMsg" class="sidebar-msg"></div>
+        </div>
+        <div id="connInfoBox" class="conn-info-box">
+          <div class="conn-info-lbl" id="connInfoLbl">✅ Connected</div>
+          <button class="btn-disconn-sm" onclick="disconnectDB()">⏹ Disconnect</button>
+        </div>
+      </div>
+    </div>
+    <button class="collapse-tab" id="collapseTab" onclick="toggleSidebar()">◀</button>
+
+    <div class="main" id="mainArea">
+      <div class="pre-connect" id="preConnect">
+        <div class="ico">🗄️</div>
+        <h3>Connect to a Database</h3>
+        <p>Use the left panel to connect to your Oracle or PostgreSQL database.</p>
+      </div>
+
+      <div id="postConnect" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+        <div class="health-panel">
+          <div class="health-panel-title">
+            <span>Health Analysis</span>
+            <button class="btn-sm" onclick="refreshHealth()">🔄 Refresh</button>
+          </div>
+          <div id="healthPH" class="health-ph">🏥 Connect to a database to begin collecting health metrics.</div>
+          <div id="healthPanel" style="display:none">
+            <div class="health-terminal" id="healthContent"></div>
+          </div>
+        </div>
+
+        <div class="subtab-bar">
+          <button class="subtab locked" id="tabQuery" onclick="switchTab('query',this)">Ask Questions</button>
+          <button class="subtab locked" id="tabRec" onclick="switchTab('recommendations',this)">Performance Recommendations</button>
+          <button class="subtab locked" id="tabTS" onclick="switchTab('troubleshoot',this)">🔍 Troubleshooting</button>
+          <button class="subtab" id="tabSettings" onclick="switchTab('settings',this)" style="margin-left:auto;font-size:12px">⚙️ Settings</button>
+        </div>
+
+        <div class="panels">
+          <!-- ASK QUESTIONS -->
+          <div class="panel" id="panel-query">
+            <div class="ask-card">
+              <div style="margin-bottom:10px">
+                <div style="font-weight:600;color:#374151;font-size:13px">Your Question</div>
+                <div style="font-size:12px;color:#64748b;margin-top:3px">e.g. What is my cache hit ratio? Show slow queries. Give me tuning recommendations.</div>
+              </div>
+              <textarea id="queryText" placeholder="Ask anything about your database performance..."></textarea>
+              <div style="margin-top:10px"><button class="btn-primary" onclick="submitQuery()">▶ Ask Question</button></div>
+            </div>
+            <div id="queryLoading" class="loading-row"><div class="spinner"></div> Analyzing...</div>
+            <div id="queryResponse" class="response-box">
+              <div style="font-weight:600;color:#374151;margin-bottom:7px">Response:</div>
+              <div id="queryResponseText"></div>
+            </div>
+          </div>
+
+          <!-- RECOMMENDATIONS -->
+          <div class="panel" id="panel-recommendations">
+            <div class="rec-bar">
+              <div class="fg" style="margin:0">
+                <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:3px;text-transform:uppercase">Analysis Period</label>
+                <select id="recLookback" style="padding:6px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:13px">
+                  <option value="0">Live Only</option>
+                  <option value="24">Last 24 Hours (AWR)</option>
+                  <option value="48">Last 48 Hours</option>
+                  <option value="72">Last 72 Hours</option>
+                </select>
+              </div>
+              <button class="btn-primary" onclick="getRecommendations()">🎯 Generate Recommendations</button>
+              <div id="recActionBar" style="display:none;gap:6px;align-items:center">
+                <button class="btn-sm" onclick="downloadRec()">💾 Download</button>
+                <button class="btn-sm" onclick="copyRec()">📋 Copy</button>
+              </div>
+            </div>
+            <div id="recLoading" class="loading-row"><div class="spinner"></div> Generating recommendations...</div>
+            <div id="recStatus" style="display:none;padding:7px 11px;border-radius:6px;font-size:12px;margin-bottom:10px"></div>
+            <div id="recOut" class="rec-out"><div id="recContent"></div></div>
+          </div>
+
+          <!-- TROUBLESHOOTING -->
+          <div class="panel" id="panel-troubleshoot">
+            <div class="ts-head">
+              <h2>🔍 Database Troubleshooting Dashboard</h2>
+              <p>Real-time wait event analysis, blocking session tree, and ASH (Active Session History) dashboard.</p>
+            </div>
+            <div class="ts-actions">
+              <button class="ts-btn" onclick="runWaitEvents()">⏳ Wait Events</button>
+              <button class="ts-btn" onclick="runBlocking()">🌳 Blocking Tree</button>
+              <button class="ts-btn" onclick="runASH()">📊 ASH Dashboard</button>
+              <button class="ts-btn" onclick="document.getElementById('sqlLookup').scrollIntoView({behavior:'smooth'})">🔍 SQL/Session Info</button>
+            </div>
+            <div id="tsLoading" class="loading-row"><div class="spinner"></div><span id="tsLoadText">Analyzing...</span></div>
+            <div id="tsResult" class="ts-result"></div>
+
+            <div class="sql-lookup" id="sqlLookup">
+              <h3>🔍 SQL ID / Session Lookup</h3>
+              <div class="lookup-row">
+                <div class="fg">
+                  <label>Lookup Type</label>
+                  <select id="lookupType" style="min-width:160px;padding:7px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:13px">
+                    <option value="sql_id">SQL ID / Query ID</option>
+                    <option value="session_id">Session ID</option>
+                  </select>
+                </div>
+                <div class="fg">
+                  <label>SQL ID</label>
+                  <input type="text" id="lookupVal" placeholder="e.g. 2x2j82x65mk54" style="min-width:200px;padding:7px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:13px">
+                </div>
+                <button class="btn-blue" onclick="doSqlLookup()">🔍 Lookup</button>
+                <button class="btn-purple" onclick="doAIAnalysis()">🤖 Ask AT&amp;T Analysis</button>
+                <button class="btn-pink" onclick="askAboutSql()">📌 Ask Question About SQL ID</button>
+              </div>
+              <button class="btn-outline-xs" onclick="doLiveFetch()">⚡ Live fetch</button>
+            </div>
+
+            <div id="sqlIdPanel" style="display:none" class="sqlid-panel">
+              <div class="sqlid-hdr">
+                <h3>ORACLE SQL Details —</h3>
+                <span class="sql-id-pill" id="sqlIdPill"></span>
+              </div>
+              <div class="card">
+                <div class="card-title">🗒 SQL Text</div>
+                <div class="sql-text-box" id="sqlTextBox"></div>
+              </div>
+              <div class="stats-health-row" id="statsHealthRow"><span class="sh-label">Stats Health</span></div>
+              <div class="analysis-cov-row" id="analysisCovRow"><span class="ac-label">Analysis Coverage:</span></div>
+              <div class="card" id="execStatsCard">
+                <div class="card-title">📊 Execution Statistics</div>
+                <div style="overflow-x:auto">
+                  <table class="dt" id="execStatsTable">
+                    <thead><tr><th>Exec Date</th><th class="r">Inst</th><th>Module</th><th class="r">Plan Hash</th><th class="r">Execs</th><th class="r">CPU (s)</th><th class="r">Elapsed (s)</th><th class="r">Avg Ela (s)</th></tr></thead>
+                    <tbody id="execStatsTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div id="warnBox" class="warn-box" style="display:none"><div id="warnList"></div></div>
+              <div id="plansContainer"></div>
+              <div id="idxCovContainer"></div>
+              <div id="aiOutPanel" style="display:none" class="ai-output">
+                <div class="card-title">🤖 AT&amp;T AI Analysis</div>
+                <div id="aiOutContent" class="ai-body"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS -->
+          <div class="panel" id="panel-settings">
+            <div class="settings-card">
+              <h3>AI Provider Configuration</h3>
+              <div class="fg"><label>OpenAI API Key (optional)</label><input type="password" id="openaiKey" placeholder="sk-..."></div>
+              <div class="fg"><label>Claude API Key (optional)</label><input type="password" id="claudeKey" placeholder="sk-ant-..."></div>
+              <div class="info-box"><strong>🟢 AT&T AskATT (Automatic)</strong> — Used automatically for all AI queries. No key needed for AT&T employees.</div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+                <button class="btn-sm" style="color:#dc2626;border-color:#fecaca" onclick="clearSettings()">🗑 Clear</button>
+              </div>
+              <div id="settingsMsg" style="display:none;margin-top:8px;font-size:12px;color:#16a34a"></div>
+            </div>
+            <div class="settings-card">
+              <h3>LLM Priority Order</h3>
+              <ol style="font-size:13px;color:#475569;line-height:1.9;padding-left:18px">
+                <li><strong>AT&T AskATT</strong> — automatic, no key required</li>
+                <li>Claude — if API key provided</li>
+                <li>OpenAI GPT-4 — if API key provided</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const API='http://localhost:8000/api';
+let currentConn=null,sqlData=null;
+
+const _F=window.fetch.bind(window);
+window.fetch=async(...a)=>{
+  const r=await _F(...a);
+  if(r.status===401){const url=(typeof a[0]==='string'?a[0]:a[0]?.url)||'';if(!url.includes('/api/login')){sessionStorage.removeItem('tok');clearConn();document.getElementById('loginOverlay').classList.remove('hidden');}}
+  return r;
+};
+const tok=()=>sessionStorage.getItem('tok')||'';
+const jh=()=>({'x-api-key':tok(),'Content-Type':'application/json'});
+const enc=id=>encodeURIComponent(id);
+const esc=t=>{const d=document.createElement('div');d.textContent=t;return d.innerHTML;};
+
+async function doLogin(){
+  const u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginError');err.textContent='';
+  if(!u||!p){err.textContent='Please enter username and password.';return;}
+  try{
+    const r=await _F(`${API}/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json();
+    if(r.ok){sessionStorage.setItem('tok',d.session_token);document.getElementById('loginOverlay').classList.add('hidden');loadSettings();loadProfiles();}
+    else err.textContent=d.detail||'Login failed';
+  }catch{err.textContent='Server unreachable.';}
+}
+
+async function doLogout(){
+  const t=tok();if(t)await _F(`${API}/logout`,{method:'POST',headers:{'x-api-key':t}}).catch(()=>{});
+  sessionStorage.removeItem('tok');clearConn();
+  document.getElementById('loginUser').value='';document.getElementById('loginPass').value='';
+  document.getElementById('loginOverlay').classList.remove('hidden');
+}
+
+function switchSidebarTab(tab,btn){
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.getElementById('spanel-profiles').style.display=tab==='profiles'?'':'none';
+  document.getElementById('spanel-manual').style.display=tab==='manual'?'':'none';
+}
+
+function toggleSidebar(){
+  const s=document.getElementById('sidebar'),t=document.getElementById('collapseTab');
+  s.classList.toggle('collapsed');t.textContent=s.classList.contains('collapsed')?'▶':'◀';
+}
+
+let profiles={},profileApps=[];
+async function loadProfiles(){
+  try{
+    const r=await fetch(`${API}/profiles`,{headers:{'x-api-key':tok()}});
+    if(!r.ok)return;const data=await r.json();profiles={};
+    const apps=new Set();
+    (Array.isArray(data)?data:data.profiles||[]).forEach(p=>{
+      const app=p.app_name||'Default',env=p.env_name||'Default',db=p.db_name||p.database||'Unknown';
+      profiles[`${app}||${env}||${db}`]=p;apps.add(app);
+    });
+    profileApps=[...apps].sort();buildAppSelect();
+  }catch{}
+}
+
+function buildAppSelect(){
+  const s=document.getElementById('appSelect');
+  s.innerHTML=profileApps.length?profileApps.map(a=>`<option value="${a}">${a}</option>`).join(''):'<option value="">No saved profiles</option>';
+  onAppChange();
+}
+
+function onAppChange(){
+  const app=document.getElementById('appSelect').value;
+  const envs=[...new Set(Object.keys(profiles).filter(k=>k.startsWith(app+'||')).map(k=>k.split('||')[1]))].sort();
+  const s=document.getElementById('envSelect');
+  s.innerHTML=envs.map(e=>`<option value="${e}">${e}</option>`).join('')||'<option value="">—</option>';
+  onEnvChange();
+}
+
+function onEnvChange(){
+  const app=document.getElementById('appSelect').value,env=document.getElementById('envSelect').value;
+  const dbs=[...new Set(Object.keys(profiles).filter(k=>k.startsWith(`${app}||${env}||`)).map(k=>k.split('||')[2]))].sort();
+  const s=document.getElementById('dbSelect');
+  s.innerHTML=dbs.map(d=>`<option value="${d}">${d}</option>`).join('')||'<option value="">—</option>';
+  onDbChange();
+}
+
+function onDbChange(){
+  const app=document.getElementById('appSelect').value,env=document.getElementById('envSelect').value,db=document.getElementById('dbSelect').value;
+  const p=profiles[`${app}||${env}||${db}`];
+  const prev=document.getElementById('profilePreview');
+  if(p){const type=(p.database_type||p.type||'DB').toUpperCase();prev.textContent=`${type}\n${p.user||''}@${p.host||''}:${p.port||''}/${p.database||db}`;}
+  else prev.textContent='Select a profile above';
+}
+
+async function quickConnect(){
+  const app=document.getElementById('appSelect').value,env=document.getElementById('envSelect').value,db=document.getElementById('dbSelect').value;
+  const p=profiles[`${app}||${env}||${db}`];
+  if(!p||!p.id){showSMsg('profileMsg','err','No profile selected');return;}
+  const btn=document.getElementById('quickConnBtn');btn.disabled=true;btn.textContent='⏳ Connecting...';
+  showSMsg('profileMsg','info','Connecting via saved profile...');
+  try{
+    const r=await fetch(`${API}/connect-profile/${enc(p.id)}`,{method:'POST',headers:{'x-api-key':tok()}});
+    const d=await r.json();
+    if(r.ok){
+      const type=(p.database_type||'oracle').toUpperCase();
+      const label=`${type} ${p.host}:${p.port}/${p.database||p.db_name} (${p.user})`;
+      setConn(d.connection_id,label);
+      showSMsg('profileMsg','ok','✅ Health status ready. Metrics collected successfully.');
+      if(d.health_report)renderHealth(d.health_report);else await refreshHealth();
+    }else showSMsg('profileMsg','err',`❌ ${d.detail||'Connection failed'}`);
+  }catch(e){showSMsg('profileMsg','err',`❌ ${e.message}`);}
+  finally{btn.disabled=false;btn.textContent='⚡ Connect';}
+}
+
+async function deleteProfile(){
+  const app=document.getElementById('appSelect').value,env=document.getElementById('envSelect').value,db=document.getElementById('dbSelect').value;
+  const p=profiles[`${app}||${env}||${db}`];
+  if(!p||!p.id){alert('No profile selected.');return;}
+  if(!confirm(`Delete "${p.app_name}/${p.env_name}/${p.db_name}"?`))return;
+  const r=await fetch(`${API}/profiles/${enc(p.id)}`,{method:'DELETE',headers:{'x-api-key':tok()}});
+  if(r.ok){delete profiles[`${app}||${env}||${db}`];buildAppSelect();showSMsg('profileMsg','ok','Profile deleted');}
+  else alert('Delete failed.');
+}
+
+function showSMsg(id,type,msg){const el=document.getElementById(id);el.className=`sidebar-msg ${type}`;el.textContent=msg;}
+
+function onDbTypeChange(){
+  const t=document.getElementById('dbType').value;
+  document.getElementById('mport').value=t==='oracle'?'1521':'5432';
+  document.getElementById('sidTypeRow').style.display=t==='oracle'?'':'none';
+  document.getElementById('sysdbaRow').style.display=t==='oracle'?'':'none';
+}
+
+async function manualConnect(){
+  const data={
+    database_type:document.getElementById('dbType').value,
+    host:document.getElementById('mhost').value,
+    port:parseInt(document.getElementById('mport').value),
+    database:document.getElementById('mdatabase').value,
+    user:document.getElementById('muser').value,
+    password:document.getElementById('mpassword').value,
+    connection_id:document.getElementById('mconnId').value||null,
+    use_sid:document.getElementById('sidSid')?.checked||false,
+  };
+  if(!data.host||!data.database||!data.user||!data.password){showSMsg('manualMsg','err','Please fill all required fields');return;}
+  const btn=document.getElementById('manualConnBtn');btn.disabled=true;btn.textContent='⏳ Connecting...';
+  showSMsg('manualMsg','info','Connecting...');
+  try{
+    const r=await fetch(`${API}/connect`,{method:'POST',headers:jh(),body:JSON.stringify(data)});
+    const d=await r.json();
+    if(r.ok){
+      const label=`${data.database_type.toUpperCase()} ${data.host}:${data.port}/${data.database} (${data.user})`;
+      setConn(d.connection_id,label);showSMsg('manualMsg','ok','✅ Connected successfully');
+      if(d.health_report)renderHealth(d.health_report);else await refreshHealth();
+    }else showSMsg('manualMsg','err',`❌ ${d.detail}`);
+  }catch(e){showSMsg('manualMsg','err',`❌ ${e.message}`);}
+  finally{btn.disabled=false;btn.textContent='🔌 Connect to Database';}
+}
+
+function setConn(id,label){
+  currentConn=id;
+  document.getElementById('connectionBanner').classList.add('show');
+  document.getElementById('connBannerText').textContent=`Connected to ${label}`;
+  document.getElementById('connInfoBox').style.display='block';
+  document.getElementById('connInfoLbl').textContent=`✅ ${label}`;
+  document.getElementById('preConnect').style.display='none';
+  const pc=document.getElementById('postConnect');pc.style.display='flex';
+  ['tabQuery','tabRec','tabTS'].forEach(id=>document.getElementById(id).classList.remove('locked'));
+}
+
+function clearConn(){
+  currentConn=null;
+  document.getElementById('connectionBanner').classList.remove('show');
+  document.getElementById('connInfoBox').style.display='none';
+  document.getElementById('preConnect').style.display='flex';
+  document.getElementById('postConnect').style.display='none';
+  document.getElementById('healthPH').style.display='block';
+  document.getElementById('healthPanel').style.display='none';
+  ['tabQuery','tabRec','tabTS'].forEach(id=>document.getElementById(id).classList.add('locked'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.subtab').forEach(b=>b.classList.remove('active'));
+}
+
+async function disconnectDB(){
+  if(!currentConn)return;
+  try{await fetch(`${API}/disconnect/${enc(currentConn)}`,{headers:{'x-api-key':tok()}});}catch{}
+  clearConn();
+}
+
+function switchTab(tab,btn){
+  if(['query','recommendations','troubleshoot'].includes(tab)&&!currentConn)return;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.subtab').forEach(b=>b.classList.remove('active'));
+  const panel=document.getElementById(`panel-${tab}`);if(panel)panel.classList.add('active');
+  if(btn)btn.classList.add('active');
+}
+
+async function refreshHealth(){
+  if(!currentConn)return;
+  try{const r=await fetch(`${API}/database/${enc(currentConn)}/health-report?refresh=true`,{headers:{'x-api-key':tok()}});if(r.ok)renderHealth(await r.json());}catch{}
+}
+
+function renderHealth(report){
+  const ph=document.getElementById('healthPH'),panel=document.getElementById('healthPanel'),content=document.getElementById('healthContent');
+  if(!report){ph.style.display='block';panel.style.display='none';return;}
+  const text=report.text||(()=>{
+    const s=report.summary||{};
+    return[`  Status     : ${s.status||'?'}  (ML confidence ${s.confidence_pct||0}%)`,`  Version    : ${s.version||'n/a'}`,`  Cache Hit  : ${s.cache_hit_ratio||0}%`,`  Connections: ${s.active_connections||0} / ${s.max_connections||0}  (${s.connection_usage_pct||0}% used)`,`  Issues     : ${s.issue_count||0} total`].join('\n');
+  })();
+  content.textContent=text;ph.style.display='none';panel.style.display='block';
+}
+
+async function submitQuery(){
+  if(!currentConn)return;
+  const query=document.getElementById('queryText').value;if(!query)return;
+  const ld=document.getElementById('queryLoading'),rb=document.getElementById('queryResponse'),rt=document.getElementById('queryResponseText');
+  ld.classList.add('show');rb.classList.remove('show');
+  try{
+    const keys=getKeys();
+    const r=await fetch(`${API}/query`,{method:'POST',headers:jh(),body:JSON.stringify({query,connection_id:currentConn,llm_provider:'auto',openai_key:keys.openai,claude_key:keys.claude})});
+    const d=await r.json();
+    rt.innerHTML=r.ok?(d.answer||'').replace(/\n/g,'<br>')+(d.llm_used?`<br><br><em style="font-size:12px;color:#64748b">✨ Powered by ${d.llm_used}</em>`:''):`Error: ${d.detail}`;
+    rb.classList.add('show');
+  }catch(e){rt.textContent=`Error: ${e.message}`;rb.classList.add('show');}
+  finally{ld.classList.remove('show');}
+}
+
+async function getRecommendations(){
+  if(!currentConn)return;
+  const ld=document.getElementById('recLoading'),out=document.getElementById('recOut'),content=document.getElementById('recContent'),st=document.getElementById('recStatus');
+  ld.classList.add('show');out.classList.remove('show');st.style.display='none';document.getElementById('recActionBar').style.display='none';
+  try{
+    const keys=getKeys(),lookback=parseInt(document.getElementById('recLookback').value||'0');
+    const r=await fetch(`${API}/database/${enc(currentConn)}/recommendations`,{method:'POST',headers:jh(),body:JSON.stringify({llm_provider:'auto',openai_key:keys.openai||null,claude_key:keys.claude||null,lookback_hours:lookback})});
+    const d=await r.json();
+    if(r.ok){content.innerHTML=buildRecHTML(d);out.classList.add('show');document.getElementById('recActionBar').style.display='flex';}
+    else{st.style.display='block';st.style.cssText='display:block;padding:7px 11px;border-radius:6px;font-size:12px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;margin-bottom:10px';st.textContent=`Error: ${d.detail}`;}
+  }catch(e){st.style.display='block';st.textContent=`Error: ${e.message}`;}
+  finally{ld.classList.remove('show');}
+}
+
+function buildRecHTML(result){
+  let h='';const info=result.database_info||{};
+  h+=`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:11px;margin-bottom:14px;display:flex;gap:20px;flex-wrap:wrap;font-size:13px">`;
+  h+=`<span><strong>Status:</strong> <span style="color:${info.ml_prediction==='NEEDS TUNING'?'#dc2626':'#16a34a'}">${info.ml_prediction||'?'}</span> (${info.ml_confidence||0}%)</span>`;
+  h+=`<span><strong>Cache Hit:</strong> ${info.cache_hit_ratio||0}%</span><span><strong>Connections:</strong> ${info.active_connections||0}/${info.max_connections||0}</span></div>`;
+  const dbRecs=result.database_recommendations||[];
+  if(dbRecs.length){
+    h+=`<div class="rec-sec-title">🔧 Database-Level Recommendations</div>`;
+    dbRecs.forEach(rec=>{
+      const sev=rec.severity||'LOW';
+      h+=`<div class="rec-item ${sev}"><div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:6px"><span class="sev ${sev}">${sev}</span><span style="font-size:13px;font-weight:600;color:#1e293b">${esc(rec.title||rec.issue||'')}</span></div>`;
+      if(rec.description)h+=`<div class="rec-desc">${rec.description.replace(/<[^>]+>/g,' ').trim()}</div>`;
+      (rec.sql_operations||[]).forEach(s=>{h+=`<div class="rec-sql">${esc(s)}</div>`;});h+=`</div>`;
+    });
+  }
+  const pRecs=result.parameter_recommendations||[];
+  if(pRecs.length){
+    h+=`<div class="rec-sec-title">⚙️ Parameter Recommendations</div>`;
+    pRecs.forEach(rec=>{
+      h+=`<div class="rec-item" style="border-left-color:#60a5fa"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${esc(rec.parameter||'')}</div>`;
+      h+=`<div class="rec-desc">Current: <code>${esc(rec.current_value||'Default')}</code> → <strong>${esc(rec.recommended_value||'')}</strong><br>${rec.description||''}</div>`;
+      if(rec.sql_command)h+=`<div class="rec-sql">${esc(rec.sql_command)}</div>`;h+=`</div>`;
+    });
+  }
+  if(result.llm_insights){
+    h+=`<div class="rec-sec-title">🤖 AI Expert Insights</div>`;
+    h+=`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;white-space:pre-wrap;font-size:13px;line-height:1.6;color:#374151">${esc(result.llm_insights)}</div>`;
+  }
+  return h;
+}
+
+async function downloadRec(){
+  if(!currentConn)return;
+  try{
+    const r=await fetch(`${API}/database/${enc(currentConn)}/recommendations/download?fmt=txt`,{headers:{'x-api-key':tok()}});
+    if(!r.ok){const e=await r.json().catch(()=>({detail:r.statusText}));alert(`Download failed: ${e.detail}`);return;}
+    const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.download='DBA_Recommendations.txt';a.href=url;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  }catch(e){alert(`Download error: ${e.message}`);}
+}
+function copyRec(){navigator.clipboard.writeText(document.getElementById('recContent').innerText||'').then(()=>alert('Copied!')).catch(()=>{});}
+
+function showTsLoad(msg){document.getElementById('tsLoadText').textContent=msg||'Analyzing...';document.getElementById('tsLoading').classList.add('show');document.getElementById('tsResult').classList.remove('show');}
+function hideTsLoad(){document.getElementById('tsLoading').classList.remove('show');}
+function showTsResult(title,data){
+  const el=document.getElementById('tsResult');
+  const text=typeof data==='string'?data:JSON.stringify(data,null,2);
+  el.innerHTML=`<div style="font-weight:600;color:#1e293b;margin-bottom:8px">${title}</div><pre class="ts-pre">${esc(text)}</pre>`;
+  el.classList.add('show');
+}
+
+async function runWaitEvents(){if(!currentConn){alert('Please connect first');return;}switchTab('troubleshoot',document.getElementById('tabTS'));showTsLoad('Analyzing wait events...');try{const r=await fetch(`${API}/database/${enc(currentConn)}/wait-events`,{headers:{'x-api-key':tok()}});const d=await r.json();showTsResult('⏳ Wait Event Analysis',r.ok?(d.data||d):d.detail);}catch(e){showTsResult('Error',e.message);}finally{hideTsLoad();}}
+async function runBlocking(){if(!currentConn){alert('Please connect first');return;}switchTab('troubleshoot',document.getElementById('tabTS'));showTsLoad('Analyzing blocking sessions...');try{const r=await fetch(`${API}/database/${enc(currentConn)}/blocking-sessions`,{headers:{'x-api-key':tok()}});const d=await r.json();showTsResult('🌳 Blocking Session Tree',r.ok?(d.data||d):d.detail);}catch(e){showTsResult('Error',e.message);}finally{hideTsLoad();}}
+async function runASH(){if(!currentConn){alert('Please connect first');return;}switchTab('troubleshoot',document.getElementById('tabTS'));showTsLoad('Loading ASH data...');try{const r=await fetch(`${API}/database/${enc(currentConn)}/ash?minutes=30`,{headers:{'x-api-key':tok()}});const d=await r.json();showTsResult('📊 ASH Dashboard',r.ok?(d.data||d):d.detail);}catch(e){showTsResult('Error',e.message);}finally{hideTsLoad();}}
+async function doLiveFetch(){if(!currentConn){alert('Please connect first');return;}showTsLoad('Fetching live metrics...');try{const r=await fetch(`${API}/database/${enc(currentConn)}/metrics`,{headers:{'x-api-key':tok()}});const d=await r.json();showTsResult('⚡ Live Metrics',r.ok?(d.metrics||d):d.detail);}catch(e){showTsResult('Error',e.message);}finally{hideTsLoad();}}
+
+async function doSqlLookup(){
+  if(!currentConn){alert('Please connect first');return;}
+  const sqlId=(document.getElementById('lookupVal').value||'').trim();if(!sqlId){alert('Please enter a SQL ID');return;}
+  showTsLoad('Looking up SQL ID...');document.getElementById('sqlIdPanel').style.display='none';
+  try{
+    const r=await fetch(`${API}/database/${enc(currentConn)}/sqlid-info?sql_id=${enc(sqlId)}`,{headers:{'x-api-key':tok()}});
+    const d=await r.json();hideTsLoad();
+    if(r.ok){sqlData=d.data||d;renderSqlId(sqlData,sqlId);}
+    else showTsResult('Error',d.detail||'SQL ID lookup failed');
+  }catch(e){hideTsLoad();showTsResult('Error',e.message);}
+}
+
+async function doAIAnalysis(){
+  if(!sqlData){alert('Please perform a lookup first');return;}
+  const sqlId=(document.getElementById('lookupVal').value||'').trim();
+  document.getElementById('aiOutPanel').style.display='none';showTsLoad('Calling AT&T AI Analysis...');
+  try{
+    const summary=buildSummary(sqlData,sqlId);
+    const r=await fetch(`${API}/database/${enc(currentConn)}/sqlid-ai-analysis`,{method:'POST',headers:jh(),body:JSON.stringify({summary,sql_id:sqlId})});
+    const d=await r.json();hideTsLoad();
+    if(r.ok){
+      document.getElementById('aiOutContent').textContent=(d.analysis?.content)||'No analysis available';
+      document.getElementById('aiOutPanel').style.display='block';
+      document.getElementById('aiOutPanel').scrollIntoView({behavior:'smooth'});
+    }else showTsResult('Error',d.detail||'AI analysis failed');
+  }catch(e){hideTsLoad();showTsResult('Error',e.message);}
+}
+
+function askAboutSql(){
+  const sqlId=(document.getElementById('lookupVal').value||'').trim();if(!sqlId){alert('Please enter a SQL ID first');return;}
+  const q=prompt(`Ask a question about SQL ID ${sqlId}:`);if(!q)return;
+  document.getElementById('queryText').value=`Regarding SQL ID ${sqlId}: ${q}`;
+  switchTab('query',document.getElementById('tabQuery'));submitQuery();
+}
+
+function buildSummary(data,sqlId){
+  const parts=[`SQL ID: ${sqlId}`];
+  const st=(data.sql_text||[{}])[0];const txt=st.SQL_FULLTEXT||st.sql_fulltext||'';
+  if(txt)parts.push(`SQL Text: ${String(txt).substring(0,400)}`);
+  (data.execution_stats||[]).slice(0,2).forEach(s=>{parts.push(`Plan Hash: ${s.PLAN_HASH_VALUE||s.plan_hash_value||'?'}, Execs: ${s.EXECUTIONS||s.executions||0}, AvgElapsed: ${s.AVG_ELAPSED_MS||s.avg_elapsed_ms||0}ms`);});
+  (data.execution_plan_rows||data.execution_plan||[]).slice(0,12).forEach(r=>{const op=r.operation||r.OPERATION||'',opts=r.options||r.OPTIONS||'',obj=r.object_name||r.OBJECT_NAME||'';parts.push(`${op} ${opts} [${obj}]`.trim());});
+  parts.push(`Existing indexes: ${(data.existing_indexes||[]).length}`,`Alternate plans: ${(data.alternate_plans||[]).length}`);
+  return parts.join('\n');
+}
+
+function renderSqlId(data,sqlId){
+  document.getElementById('sqlIdPanel').style.display='block';document.getElementById('sqlIdPill').textContent=sqlId;
+  const st=(data.sql_text||[{}])[0];
+  document.getElementById('sqlTextBox').textContent=st.SQL_FULLTEXT||st.sql_fulltext||st.SQL_TEXT||st.sql_text||'(SQL text not available)';
+  renderStatsHealth(data);renderAnalysisCov(data);renderExecStats(data);renderWarnings(data);renderPlans(data);renderIdxCov(data);
+  document.getElementById('aiOutPanel').style.display='none';
+  document.getElementById('sqlIdPanel').scrollIntoView({behavior:'smooth'});
+}
+
+function renderStatsHealth(data){
+  const row=document.getElementById('statsHealthRow');const obj=data.object_statistics||{};
+  const ts=obj.table_stats||[],tps=obj.table_partition_stats||[],ips=obj.index_partition_stats||[];
+  const stale=arr=>arr.filter(t=>(t.stale_stats||t.STALE_STATS||'').toUpperCase()==='YES').length;
+  let h=`<span class="sh-label">Stats Health</span>`;
+  h+=`<span class="sh-badge ${stale(ts)===0?'ok':''}">Tables: ${stale(ts)} stale / ${ts.length}</span>`;
+  h+=`<span class="sh-badge ${stale(tps)===0?'ok':''}">Table partitions: ${stale(tps)} stale / ${tps.length}</span>`;
+  h+=`<span class="sh-badge ${stale(ips)===0?'ok':''}">Index partitions: ${stale(ips)} stale / ${ips.length}</span>`;
+  row.innerHTML=h;
+}
+
+function renderAnalysisCov(data){
+  const row=document.getElementById('analysisCovRow');
+  const checks=[
+    ['SQL text',(data.sql_text||[]).length>0],['Execution stats',(data.execution_stats||[]).length>0],
+    ['Plan data',(data.execution_plan_rows||data.execution_plan||[]).length>0],
+    ['Object stats',!!(data.object_statistics?.table_stats?.length||data.object_statistics?.index_stats?.length)],
+    ['Existing indexes',(data.existing_indexes||[]).length>0],['Alternate plans',(data.alternate_plans||[]).length>0],
+  ];
+  const total=checks.filter(c=>c[1]).length;
+  let h=`<span class="ac-label">Analysis Coverage: ${total}/${checks.length}</span>`;
+  checks.forEach(([label,ok])=>{h+=`<span class="ac-badge ${ok?'':'no'}">${label}: ${ok?'Yes':'No'}</span>`;});
+  row.innerHTML=h;
+}
+
+function renderExecStats(data){
+  const tbody=document.getElementById('execStatsTbody');const stats=data.execution_stats||[];
+  if(!stats.length){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:12px">No AWR execution statistics available</td></tr>`;return;}
+  tbody.innerHTML=stats.map(s=>{
+    const date=s.EXEC_DATE||s.exec_date||'—',inst=s.INST_ID||s.inst_id||s.CHILD_NUMBER||s.child_number||'—';
+    const mod=s.MODULE||s.module||'—',phv=s.PLAN_HASH_VALUE||s.plan_hash_value||'—',execs=s.EXECUTIONS||s.executions||0;
+    const cpu=s.CPU_TIM_SECS||s.cpu_tim_secs||(s.AVG_CPU_MS?(parseFloat(s.AVG_CPU_MS||s.avg_cpu_ms)/1000).toFixed(3):'—');
+    const ela=s.ELA_TIM_SECS||s.ela_tim_secs||'—';
+    const avgEla=s.AVG_ELA_SECS||s.avg_ela_secs||(s.AVG_ELAPSED_MS?(parseFloat(s.AVG_ELAPSED_MS||s.avg_elapsed_ms)/1000).toFixed(3):'—');
+    return`<tr><td>${esc(String(date))}</td><td class="r">${inst}</td><td>${esc(String(mod))}</td><td class="r" style="font-family:monospace">${phv}</td><td class="r">${execs}</td><td class="r">${cpu}</td><td class="r">${ela}</td><td class="r">${avgEla}</td></tr>`;
+  }).join('');
+}
+
+function renderWarnings(data){
+  const box=document.getElementById('warnBox'),list=document.getElementById('warnList');const warns=[];
+  const stats=data.execution_stats||[];
+  if(stats.length){
+    const avgMs=parseFloat(stats[0].AVG_ELAPSED_MS||stats[0].avg_elapsed_ms||(parseFloat(stats[0].AVG_ELA_SECS||stats[0].avg_ela_secs||0)*1000)||0);
+    if(avgMs>1000)warns.push('High average elapsed time (>1s)');
+    if(parseFloat(stats[0].AVG_BUFFER_GETS||stats[0].avg_buffer_gets||0)>100000)warns.push('High buffer gets per execution');
+    if(parseFloat(stats[0].AVG_DISK_READS||stats[0].avg_disk_reads||0)>1000)warns.push('High disk reads per execution');
+  }
+  if((data.cardinality_errors||[]).length)warns.push(`${data.cardinality_errors.length} cardinality estimation error(s) detected`);
+  if(data.bind_variable_skew?.has_skew)warns.push('Bind variable peeking causing plan variation');
+  if(!warns.length){box.style.display='none';return;}
+  box.style.display='block';list.innerHTML=warns.map(w=>`<div class="warn-item">⚠️ ${esc(w)}</div>`).join('');
+}
+
+function renderPlans(data){
+  const container=document.getElementById('plansContainer');
+  const allPlans=data.all_plans||[];const planRows=data.execution_plan_rows||data.execution_plan||[];const execStats=data.execution_stats||[];
+  const plans=allPlans.length>0?allPlans:[{plan_hash_value:data.current_plan_hash_value||'unknown',child_number:0,plan_rows:planRows,exec_stats:execStats[0]?{executions:execStats[0].EXECUTIONS||execStats[0].executions||0,avg_elapsed_ms:execStats[0].AVG_ELAPSED_MS||execStats[0].avg_elapsed_ms||0,avg_cpu_ms:execStats[0].AVG_CPU_MS||execStats[0].avg_cpu_ms||0,avg_buffer_gets:execStats[0].AVG_BUFFER_GETS||execStats[0].avg_buffer_gets||0,avg_disk_reads:execStats[0].AVG_DISK_READS||execStats[0].avg_disk_reads||0,avg_rows:execStats[0].AVG_ROWS||execStats[0].avg_rows||0}:null}];
+  let html=`<div class="plan-card"><div class="plan-card-hdr" onclick="togglePlanCard(this)">▼ All SQL Plans by Plan Hash Value (${plans.length} plan${plans.length>1?'s':''})</div><div class="plan-card-body open">`;
+  plans.forEach((plan,pi)=>{
+    const phv=plan.plan_hash_value||'?',child=plan.child_number!==undefined?plan.child_number:0,es=plan.exec_stats||{},rows=plan.plan_rows||planRows;
+    html+=`<div style="margin-bottom:${pi<plans.length-1?'14px':'0'}">`;
+    html+=`<div class="plan-meta">Plan Hash: <strong>${phv}</strong> | Child#: ${child} | Execs: ${es.executions||0} | Avg Elapsed: <strong>${es.avg_elapsed_ms||0}ms</strong></div>`;
+    if(es.executions!==undefined){html+=`<div class="plan-stats"><strong>Execution Stats (AWR)</strong> — <span>Executions: <strong>${es.executions||0}</strong></span><span>Avg Elapsed: <strong>${es.avg_elapsed_ms||0}ms</strong></span><span>Avg CPU: <strong>${es.avg_cpu_ms||0}ms</strong></span><span>Avg Buffer Gets: <strong>${es.avg_buffer_gets||0}</strong></span><span>Avg Disk Reads: <strong>${es.avg_disk_reads||0}</strong></span><span>Avg Rows: <strong>${es.avg_rows||0}</strong></span></div>`;}
+    if(rows.length){const flow=buildFlow(rows);if(flow)html+=`<div class="plan-flow">${esc(flow)}</div>`;}
+    html+=buildPlanTable(rows);html+=`</div>`;
+  });
+  html+=`</div></div>`;container.innerHTML=html;
+}
+
+function buildFlow(rows){return rows.slice(0,18).map(r=>{const op=r.operation||r.OPERATION||'',opts=r.options||r.OPTIONS||'',obj=r.object_name||r.OBJECT_NAME||'',cost=r.cost||r.COST,card=r.cardinality||r.CARDINALITY;let s=`${op}${opts?' '+opts:''}${obj?` [${obj}]`:''}`;if(cost)s+=` (Cost: ${cost}${card?', Rows: '+card:''})`;return s;}).filter(Boolean).join(' → ');}
+
+function buildPlanTable(rows){
+  if(!rows||!rows.length)return'';
+  const rootCost=parseFloat(rows[0]?.cost||rows[0]?.COST||1)||1;
+  const ftsTables=[];
+  rows.forEach(r=>{const op=(r.operation||r.OPERATION||'').toUpperCase(),opts=(r.options||r.OPTIONS||'').toUpperCase(),obj=r.object_name||r.OBJECT_NAME||'';if(op.includes('TABLE ACCESS')&&opts.includes('FULL')&&obj&&!ftsTables.includes(obj))ftsTables.push(obj);});
+  let h=`<div class="plan-tbl-wrap"><table class="plan-tbl"><thead><tr><th style="min-width:40px">Id</th><th style="min-width:340px">Operation</th><th style="min-width:190px">| Object</th><th style="min-width:70px;text-align:right">| Cost</th><th style="min-width:70px;text-align:right">Rows</th><th style="min-width:110px">%Cost</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    const id=r.id!==undefined?r.id:(r.ID!==undefined?r.ID:i);
+    const op=(r.operation||r.OPERATION||'').toUpperCase().trim(),opts=(r.options||r.OPTIONS||'').toUpperCase().trim();
+    const obj=r.object_name||r.OBJECT_NAME||'',cost=parseFloat(r.cost||r.COST||0)||0,card=r.cardinality||r.CARDINALITY||'';
+    const depth=parseInt(r.depth||r.DEPTH||0),accPred=r.access_predicates||r.ACCESS_PREDICATES||'',filtPred=r.filter_predicates||r.FILTER_PREDICATES||'',hasPred=!!(accPred||filtPred);
+    const indent='│  '.repeat(Math.max(0,depth-1))+(depth>0?'├─ ':'');
+    let opCls='op-other';
+    if(op.includes('TABLE ACCESS')&&opts.includes('FULL'))opCls='op-fts';
+    else if(op.includes('INDEX'))opCls='op-index';
+    else if(op.includes('HASH JOIN')||op.includes('HASH GROUP'))opCls='op-hash';
+    else if(op.includes('NESTED LOOP'))opCls='op-nested';
+    else if(op.includes('SORT'))opCls='op-sort';
+    const pct=rootCost>0?Math.round((cost/rootCost)*100):0;
+    const barCls=pct>=80?'hi':pct>=20?'md':'lo';const bw=Math.max(1,Math.min(100,pct));
+    const costCls=pct>=80?'cost-hi':pct>=20?'cost-med':'cost-lo';
+    h+=`<tr><td style="color:#94a3b8;font-size:11px">${hasPred?`${id}*`:id}</td>`;
+    h+=`<td><span style="color:#334155;font-family:monospace;font-size:11px">${esc(indent)}</span><span class="${opCls}">${esc(op)}</span>${opts?`<span class="op-opts"> ${esc(opts)}</span>`:''}</td>`;
+    h+=`<td class="plan-obj">${obj?esc(obj):''}</td><td style="text-align:right" class="${costCls}">${cost>0?cost:''}</td><td style="text-align:right;color:#94a3b8">${card}</td>`;
+    h+=`<td><div class="cost-bar-wrap"><div class="cost-bar ${barCls}" style="width:${bw}px"></div><span style="font-size:10px;color:#94a3b8">${pct}%</span></div></td></tr>`;
+    if(accPred)h+=`<tr class="pred-tr"><td colspan="6"><span class="acc">access(</span>${esc(accPred)}<span class="acc">)</span></td></tr>`;
+    if(filtPred)h+=`<tr class="pred-tr"><td colspan="6">filter(${esc(filtPred)})</td></tr>`;
+  });
+  h+=`</tbody></table>`;
+  if(ftsTables.length)h+=`<div class="fts-banner">⚠️ FULL TABLE SCAN: ${ftsTables.map(t=>esc(t)).join(', ')}</div>`;
+  h+=`<div class="plan-legend"><span style="font-size:11px;color:#94a3b8;margin-right:2px">Legend:</span>`;
+  [['#ef4444','FTS'],['#22c55e','INDEX'],['#60a5fa','HASH JOIN'],['#c084fc','NESTED LOOPS'],['#fbbf24','SORT']].forEach(([c,l])=>{h+=`<span class="leg-item"><div class="leg-dot" style="background:${c}"></div>${l}</span>`;});
+  h+=`<span class="leg-item" style="color:#94a3b8">* has predicates</span></div></div>`;
+  return h;
+}
+
+function renderIdxCov(data){
+  const container=document.getElementById('idxCovContainer');const eidx=data.existing_indexes||[];const predCols=data.predicate_columns_detected||[];
+  let h=`<div class="card"><div class="card-title">🔍 Existing Index Coverage Check</div>`;
+  if(predCols.length)h+=`<div class="pred-cols-line">Predicate columns detected: <strong>${predCols.map(c=>esc(c)).join(', ')}</strong></div>`;
+  if(eidx.length){
+    h+=`<div class="idx-cov-msg ok">✅ ${eidx.length} existing index(es) already match predicate columns or are used in the plan. Prefer validating/reusing these before CREATE INDEX.</div>`;
+    h+=`<div style="overflow-x:auto;padding:0 14px 14px"><table class="dt"><thead><tr><th>Table</th><th>Index</th><th>Index Columns</th></tr></thead><tbody>`;
+    eidx.forEach(ix=>{const t=(ix.table_name||ix.TABLE_NAME||'').toUpperCase(),idx=ix.index_name||ix.INDEX_NAME||'',cols=ix.index_columns||ix.INDEX_COLUMNS||'',uniq=ix.uniqueness||ix.UNIQUENESS||'';h+=`<tr><td>${esc(t)}</td><td>${esc(idx)}${uniq==='UNIQUE'?' <small style="color:#16a34a">(UNIQUE)</small>':''}</td><td style="font-family:monospace;font-size:12px">${esc(cols)}</td></tr>`;});
+    h+=`</tbody></table></div>`;
+  }else if(predCols.length){h+=`<div class="idx-cov-msg warn">⚠️ No existing indexes found matching predicate columns. Consider creating an index.</div>`;}
+  else{h+=`<div style="padding:10px 14px;font-size:12px;color:#64748b">No predicate columns detected.</div>`;}
+  h+=`</div>`;container.innerHTML=h;
+}
+
+function togglePlanCard(hdr){
+  const body=hdr.nextElementSibling;body.classList.toggle('open');
+  hdr.textContent=(body.classList.contains('open')?'▼':'▶')+hdr.textContent.substring(1);
+}
+
+function loadSettings(){document.getElementById('openaiKey').value=localStorage.getItem('openai_key')||'';document.getElementById('claudeKey').value=localStorage.getItem('claude_key')||'';}
+function saveSettings(){localStorage.setItem('openai_key',document.getElementById('openaiKey').value.trim());localStorage.setItem('claude_key',document.getElementById('claudeKey').value.trim());const m=document.getElementById('settingsMsg');m.style.display='block';m.textContent='✅ Settings saved!';setTimeout(()=>{m.style.display='none';},2000);}
+function clearSettings(){localStorage.removeItem('openai_key');localStorage.removeItem('claude_key');document.getElementById('openaiKey').value='';document.getElementById('claudeKey').value='';}
+function getKeys(){return{openai:localStorage.getItem('openai_key')||'',claude:localStorage.getItem('claude_key')||''};}
+
+window.addEventListener('load',()=>{
+  if(tok()){document.getElementById('loginOverlay').classList.add('hidden');loadSettings();loadProfiles();}
+  document.getElementById('preConnect').style.display='flex';
+});
+</script>
+</body>
+</html>
