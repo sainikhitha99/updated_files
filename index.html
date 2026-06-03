@@ -55,32 +55,26 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#eef2f7;m
 .btn-disconn-sm{width:100%;background:#dc2626;color:#fff;border:none;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500}
 .collapse-tab{position:absolute;left:300px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;width:16px;height:48px;border-radius:0 6px 6px 0;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;font-size:10px;border:none;transition:left .25s;box-shadow:3px 0 8px rgba(37,99,235,.3)}
 .sidebar.collapsed~.collapse-tab{left:0}
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main{flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
 .pre-connect{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;gap:12px;padding:40px;text-align:center}
 .pre-connect .ico{font-size:52px}
 .pre-connect h3{font-size:18px;color:#475569}
 
 /* ── Health panel ─────────────────────────── */
-.health-panel{padding:0;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0}
-.health-panel-title{font-size:15px;font-weight:700;color:#1e293b;display:flex;align-items:center;justify-content:space-between;padding:12px 24px;cursor:pointer;user-select:none;background:#fff;border-bottom:1px solid transparent;transition:background .15s}
-.health-panel-title:hover{background:#f8fafc}
-.health-panel-title .hp-left{display:flex;align-items:center;gap:8px}
-.health-panel-title .hp-chevron{font-size:11px;color:#94a3b8;transition:transform .25s}
-.health-panel-title.collapsed .hp-chevron{transform:rotate(-90deg)}
-.health-panel-body{padding:0 24px 14px;transition:all .25s}
-.health-panel-body.hidden{display:none}
-.health-terminal{background:#0f172a;color:#e2e8f0;border-radius:9px;padding:13px 15px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12.5px;white-space:pre-wrap;max-height:230px;overflow-y:auto;line-height:1.65}
+.health-panel{background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;padding:14px 40px 16px}
+.health-panel-title{font-size:15px;font-weight:700;color:#1e293b;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.health-terminal{background:#0f172a;color:#e2e8f0;border-radius:9px;padding:13px 15px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12.5px;white-space:pre-wrap;line-height:1.65}
 .health-ph{color:#64748b;font-size:14px;text-align:center;padding:22px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:9px}
 .health-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:22px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:9px;color:#2563eb;font-size:14px;font-weight:500}
 
 /* ── Main tabs ────────────────────────────── */
-.subtab-bar{display:flex;background:#1e293b;flex-shrink:0;padding:0 24px;gap:2px}
+.subtab-bar{display:flex;background:#1e293b;flex-shrink:0;padding:0 40px;gap:2px}
 .subtab{padding:12px 20px;border:none;background:none;cursor:pointer;font-size:14px;color:#94a3b8;border-bottom:3px solid transparent;margin-bottom:0;font-weight:500;transition:color .15s,background .15s;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;border-radius:6px 6px 0 0}
 .subtab:hover{color:#e2e8f0;background:rgba(255,255,255,.07)}
 .subtab.active{color:#fff;border-bottom-color:#3b82f6;font-weight:600;background:rgba(59,130,246,.18)}
 .subtab.locked{color:#475569;cursor:not-allowed}
-.panels{flex:1;overflow:hidden}
-.panel{display:none;height:100%;overflow-y:auto;padding:24px 32px}
+.panels{flex-shrink:0}
+.panel{display:none;padding:24px 40px 40px}
 .panel.active{display:block}
 .ask-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .ask-card textarea{width:100%;border:1.5px solid #e2e8f0;border-radius:7px;padding:10px 12px;font-size:15px;font-family:inherit;resize:vertical;min-height:90px;transition:border-color .15s}
@@ -186,6 +180,14 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#eef2f7;m
 .pred-tr td{background:#1a2744 !important;color:#fbbf24;font-size:11px;padding:3px 14px;white-space:normal;word-break:break-word}
 .pred-tr .acc{color:#60a5fa}
 .fts-banner{background:#dc2626;color:#fff;padding:7px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px}
+.pred-box{background:#0f172a;border:1px solid #334155;border-radius:0 0 8px 8px;padding:0;font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:11.5px;overflow-x:auto}
+.pred-box-hdr{padding:7px 14px;background:#1e293b;color:#94a3b8;font-size:11px;font-weight:600;letter-spacing:.5px;border-bottom:1px solid #334155}
+.pred-box-body{padding:8px 14px 10px}
+.pred-line{display:flex;gap:10px;padding:2px 0;line-height:1.5}
+.pred-lineno{color:#4ade80;min-width:28px;text-align:right;flex-shrink:0;font-weight:600}
+.pred-type-access{color:#60a5fa;font-weight:600;min-width:52px;flex-shrink:0}
+.pred-type-filter{color:#fbbf24;font-weight:600;min-width:52px;flex-shrink:0}
+.pred-text{color:#e2e8f0;white-space:pre-wrap;word-break:break-all}
 .plan-legend{padding:7px 14px;background:#1e293b;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px}
 .leg-item{display:flex;align-items:center;gap:4px;color:#94a3b8}
 .leg-dot{width:11px;height:11px;border-radius:2px;flex-shrink:0}
@@ -324,28 +326,24 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#eef2f7;m
     <button class="collapse-tab" id="collapseTab" onclick="toggleSidebar()">&#9664;</button>
 
     <div class="main" id="mainArea">
-      <div id="postConnect" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+      <div id="postConnect" style="display:none;flex-direction:column;flex:1">
         <div class="health-panel" id="healthPanelWrap">
-          <div class="health-panel-title" id="healthToggleBtn" onclick="toggleHealthPanel()">
-            <span class="hp-left">
-              <span class="hp-chevron" id="healthChevron">&#9660;</span>
-              <span>&#9679;&nbsp; Health Analysis</span>
-            </span>
-            <span onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:8px">
+          <div class="health-panel-title">
+            <span style="display:flex;align-items:center;gap:8px">
+              <span style="color:#16a34a;font-size:13px">&#9679;</span>
+              <span>Health Analysis</span>
               <span id="healthStatusBadge" style="display:none;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700"></span>
-              <button class="btn-sm" onclick="refreshHealth()">&#8635; Refresh</button>
             </span>
+            <button class="btn-sm" onclick="refreshHealth()">&#8635; Refresh</button>
           </div>
-          <div class="health-panel-body" id="healthPanelBody">
-            <div id="healthPH" class="health-ph">Connect to a database to begin collecting health metrics.</div>
-            <div id="healthLoading" class="health-loading" style="display:none">
-              <div class="spinner-lg"></div>
-              <span>Collecting health metrics...</span>
-            </div>
-            <div id="healthPanel" style="display:none">
-              <div class="health-terminal" id="healthContent"></div>
-              <div id="healthIssues"></div>
-            </div>
+          <div id="healthPH" class="health-ph">Connect to a database to begin collecting health metrics.</div>
+          <div id="healthLoading" class="health-loading" style="display:none">
+            <div class="spinner-lg"></div>
+            <span>Collecting health metrics...</span>
+          </div>
+          <div id="healthPanel" style="display:none">
+            <div class="health-terminal" id="healthContent"></div>
+            <div id="healthIssues"></div>
           </div>
         </div>
 
@@ -357,10 +355,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#eef2f7;m
           <button class="subtab" id="tabSettings" onclick="switchTab('settings',this)" style="margin-left:auto;font-size:12px">Settings</button>
         </div>
 
-        <div id="connectFirstMsg" style="display:none;padding:40px;text-align:center">
-          <div style="font-size:42px;margin-bottom:12px;opacity:0.5">&#128451;</div>
-          <h3 style="font-size:17px;color:#475569;margin-bottom:6px">Connect to a Database First</h3>
-          <p style="font-size:13px;color:#94a3b8">Use the left panel to connect to your Oracle or PostgreSQL database, then return to this tab.</p>
+        <div id="connectFirstMsg" style="display:none;padding:60px 40px;text-align:center">
+          <div style="font-size:48px;margin-bottom:14px;opacity:0.4">&#128451;</div>
+          <h3 style="font-size:18px;color:#475569;margin-bottom:8px">Connect to a Database First</h3>
+          <p style="font-size:14px;color:#94a3b8">Use the left panel to connect to your Oracle or PostgreSQL database, then return to this tab.</p>
         </div>
 
         <div class="panels">
@@ -761,14 +759,6 @@ async function disconnectDB(){
   clearConn();
 }
 
-/* Health panel collapse */
-function toggleHealthPanel(){
-  const body=document.getElementById('healthPanelBody');
-  const btn=document.getElementById('healthToggleBtn');
-  body.classList.toggle('hidden');
-  btn.classList.toggle('collapsed');
-}
-
 /* Generic card collapse */
 function toggleCard(id){
   document.getElementById(id).classList.toggle('collapsed');
@@ -828,10 +818,6 @@ function renderHealth(report){
     badge.style.background=status==='NEEDS TUNING'?'#fee2e2':status==='HEALTHY'?'#dcfce7':'#f1f5f9';
     badge.style.color=status==='NEEDS TUNING'?'#dc2626':status==='HEALTHY'?'#16a34a':'#475569';
   }
-  // Auto-expand health panel if it was collapsed
-  const body=document.getElementById('healthPanelBody');
-  const btn=document.getElementById('healthToggleBtn');
-  if(body&&body.classList.contains('hidden')){body.classList.remove('hidden');btn.classList.remove('collapsed');}
   // Render issues if present
   let issuesHtml='';
   const issues=report.issues||[];
@@ -1498,13 +1484,26 @@ function buildPlanTable(rows){
   if(!rows||!rows.length)return'';
   const rootCost=parseFloat(rows[0]?.cost||rows[0]?.COST||1)||1;
   const ftsTables=[];
-  rows.forEach(r=>{const op=(r.operation||r.OPERATION||'').toUpperCase(),opts=(r.options||r.OPTIONS||'').toUpperCase(),obj=r.object_name||r.OBJECT_NAME||'';if(op.includes('TABLE ACCESS')&&opts.includes('FULL')&&obj&&!ftsTables.includes(obj))ftsTables.push(obj);});
+  // Collect all predicates keyed by id for the predicate box
+  const predMap={}; // id -> [{type,text}]
+  rows.forEach(r=>{
+    const op=(r.operation||r.OPERATION||'').toUpperCase(),opts=(r.options||r.OPTIONS||'').toUpperCase(),obj=r.object_name||r.OBJECT_NAME||'';
+    if(op.includes('TABLE ACCESS')&&opts.includes('FULL')&&obj&&!ftsTables.includes(obj))ftsTables.push(obj);
+    const id=r.id!==undefined?r.id:(r.ID!==undefined?r.ID:'?');
+    const acc=r.access_predicates||r.ACCESS_PREDICATES||'';
+    const filt=r.filter_predicates||r.FILTER_PREDICATES||'';
+    if(acc||filt){
+      if(!predMap[id])predMap[id]=[];
+      if(acc)predMap[id].push({type:'access',text:acc});
+      if(filt)predMap[id].push({type:'filter',text:filt});
+    }
+  });
   let h='<div class="plan-tbl-wrap"><table class="plan-tbl"><thead><tr><th style="min-width:40px">Id</th><th style="min-width:340px">Operation</th><th style="min-width:190px">| Object</th><th style="min-width:70px;text-align:right">| Cost</th><th style="min-width:70px;text-align:right">Rows</th><th style="min-width:110px">%Cost</th></tr></thead><tbody>';
   rows.forEach((r,i)=>{
     const id=r.id!==undefined?r.id:(r.ID!==undefined?r.ID:i);
     const op=(r.operation||r.OPERATION||'').toUpperCase().trim(),opts=(r.options||r.OPTIONS||'').toUpperCase().trim();
     const obj=r.object_name||r.OBJECT_NAME||'',cost=parseFloat(r.cost||r.COST||0)||0,card=r.cardinality||r.CARDINALITY||'';
-    const depth=parseInt(r.depth||r.DEPTH||0),accPred=r.access_predicates||r.ACCESS_PREDICATES||'',filtPred=r.filter_predicates||r.FILTER_PREDICATES||'',hasPred=!!(accPred||filtPred);
+    const depth=parseInt(r.depth||r.DEPTH||0),hasPred=!!(predMap[id]);
     const indent='|  '.repeat(Math.max(0,depth-1))+(depth>0?'|- ':'');
     let opCls='op-other';
     if(op.includes('TABLE ACCESS')&&opts.includes('FULL'))opCls='op-fts';
@@ -1515,18 +1514,32 @@ function buildPlanTable(rows){
     const pct=rootCost>0?Math.round((cost/rootCost)*100):0;
     const barCls=pct>=80?'hi':pct>=20?'md':'lo';const bw=Math.max(1,Math.min(100,pct));
     const costCls=pct>=80?'cost-hi':pct>=20?'cost-med':'cost-lo';
-    h+='<tr><td style="color:#94a3b8;font-size:11px">'+(hasPred?id+'*':id)+'</td>';
+    h+='<tr><td style="color:#94a3b8;font-size:11px">'+(hasPred?'<span style="color:#fbbf24">'+id+'*</span>':id)+'</td>';
     h+='<td><span style="color:#334155;font-family:monospace;font-size:11px">'+esc(indent)+'</span><span class="'+opCls+'">'+esc(op)+'</span>'+(opts?'<span class="op-opts"> '+esc(opts)+'</span>':'')+'</td>';
     h+='<td class="plan-obj">'+(obj?esc(obj):'')+'</td><td style="text-align:right" class="'+costCls+'">'+(cost>0?cost:'')+'</td><td style="text-align:right;color:#94a3b8">'+esc(card)+'</td>';
     h+='<td><div class="cost-bar-wrap"><div class="cost-bar '+barCls+'" style="width:'+bw+'px"></div><span style="font-size:10px;color:#94a3b8">'+pct+'%</span></div></td></tr>';
-    if(accPred)h+='<tr class="pred-tr"><td colspan="6"><span class="acc">access(</span>'+esc(accPred)+'<span class="acc">)</span></td></tr>';
-    if(filtPred)h+='<tr class="pred-tr"><td colspan="6">filter('+esc(filtPred)+')</td></tr>';
   });
   h+='</tbody></table>';
-  if(ftsTables.length)h+='<div class="fts-banner">FULL TABLE SCAN: '+ftsTables.map(t=>esc(t)).join(', ')+'</div>';
+  if(ftsTables.length)h+='<div class="fts-banner">&#9888; FULL TABLE SCAN: '+ftsTables.map(t=>esc(t)).join(', ')+'</div>';
   h+='<div class="plan-legend"><span style="font-size:11px;color:#94a3b8;margin-right:2px">Legend:</span>';
   [['#ef4444','FTS'],['#22c55e','INDEX'],['#60a5fa','HASH JOIN'],['#c084fc','NESTED LOOPS'],['#fbbf24','SORT']].forEach(([c,l])=>{h+='<span class="leg-item"><div class="leg-dot" style="background:'+c+'"></div>'+l+'</span>';});
-  h+='<span class="leg-item" style="color:#94a3b8">* has predicates</span></div></div>';
+  h+='<span class="leg-item" style="color:#fbbf24">* has predicates</span></div>';
+  // Predicate information box
+  const predEntries=Object.entries(predMap);
+  if(predEntries.length){
+    const total=predEntries.reduce((n,[,ps])=>n+ps.length,0);
+    h+='<div class="pred-box">';
+    h+='<div class="pred-box-hdr">&#128269; Predicate Information ('+total+' predicate'+(total!==1?'s':'')+')</div>';
+    h+='<div class="pred-box-body">';
+    predEntries.forEach(([id,preds])=>{
+      preds.forEach(p=>{
+        const typeCls=p.type==='access'?'pred-type-access':'pred-type-filter';
+        h+='<div class="pred-line"><span class="pred-lineno">'+esc(id)+'</span><span class="'+typeCls+'">'+esc(p.type)+'</span><span class="pred-text">'+esc(p.text)+'</span></div>';
+      });
+    });
+    h+='</div></div>';
+  }
+  h+='</div>';
   return h;
 }
 
