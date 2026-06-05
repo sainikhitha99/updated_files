@@ -1487,13 +1487,19 @@ class MetricsCollector:
             tbl_filter_i = _owner_table_filter('i', owner_table_pairs)
             tbl_in = ', '.join(f"'{t}'" for t in safe_tables)
 
+            # Table-level stats: use PARTITION_NAME IS NULL (reliable across all Oracle
+            # versions/configurations) rather than object_type = 'TABLE', which can be
+            # NULL for non-partitioned tables in some CDB patch-set combinations.
+            # NOTE: dba_tab_statistics has NO 'partitioned'/'degree' columns (those live
+            # in dba_tables) — selecting them throws ORA-00904 and silently empties the
+            # whole result. They are intentionally omitted here.
             stats_queries['table_stats'] = (
                 f"SELECT ts.owner, ts.table_name, ts.num_rows, ts.blocks, ts.avg_row_len, "
                 f"TO_CHAR(ts.last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed, "
-                f"ts.stale_stats, ts.partitioned, ts.degree, ts.sample_size "
+                f"ts.stale_stats, ts.sample_size "
                 f"FROM dba_tab_statistics ts "
                 f"WHERE {tbl_filter} "
-                f"AND ts.object_type = 'TABLE' "
+                f"AND ts.partition_name IS NULL "
                 f"ORDER BY ts.owner, ts.table_name"
             )
 
@@ -1503,7 +1509,7 @@ class MetricsCollector:
                 f"TO_CHAR(ts.last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed "
                 f"FROM dba_tab_statistics ts "
                 f"WHERE {tbl_filter} "
-                f"AND ts.object_type IN ('PARTITION', 'SUBPARTITION') "
+                f"AND ts.partition_name IS NOT NULL "
                 f"ORDER BY ts.owner, ts.table_name, ts.partition_name, ts.subpartition_name "
                 f"FETCH FIRST 500 ROWS ONLY"
             )
@@ -1607,6 +1613,7 @@ class MetricsCollector:
             if not results.get(k)
         }
         if fallback_needed:
+            # Fallback layer 1: all_* views (no DBA needed, same schema)
             fallback_queries: Dict[str, str] = {}
             for k in fallback_needed:
                 if k in stats_queries:
@@ -1623,7 +1630,40 @@ class MetricsCollector:
                 for k, rows in fb_results.items():
                     if rows:
                         results[k] = rows
-                        logger.info("Object stats: '%s' filled from all_* fallback (%d rows)", k, len(rows))
+                        logger.info("Object stats '%s': filled from all_* fallback (%d rows)", k, len(rows))
+
+            # Fallback layer 2 for table_stats only: use ALL_TABLES / DBA_TABLES which
+            # never have an object_type or partition_name column — broadest compatibility.
+            if not results.get('table_stats') and safe_tables:
+                for tbl_view in ('all_tables', 'dba_tables', 'user_tables'):
+                    tbl_in_fb = ', '.join(f"'{t}'" for t in safe_tables)
+                    # user_tables has no OWNER column; handle separately
+                    if tbl_view == 'user_tables':
+                        fb_tbl_sql = (
+                            f"SELECT USER AS owner, table_name, num_rows, blocks, avg_row_len, "
+                            f"TO_CHAR(last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed, "
+                            f"NULL AS stale_stats, partitioned, degree, sample_size "
+                            f"FROM user_tables "
+                            f"WHERE table_name IN ({tbl_in_fb}) "
+                            f"ORDER BY table_name"
+                        )
+                    else:
+                        fb_tbl_sql = (
+                            f"SELECT owner, table_name, num_rows, blocks, avg_row_len, "
+                            f"TO_CHAR(last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed, "
+                            f"NULL AS stale_stats, partitioned, degree, sample_size "
+                            f"FROM {tbl_view} "
+                            f"WHERE table_name IN ({tbl_in_fb}) "
+                            f"ORDER BY owner, table_name"
+                        )
+                    try:
+                        fb_tbl_rows = self.conn.execute_query_dict(fb_tbl_sql) or []
+                        if fb_tbl_rows:
+                            results['table_stats'] = fb_tbl_rows
+                            logger.info("Object stats 'table_stats': filled from %s (%d rows)", tbl_view, len(fb_tbl_rows))
+                            break
+                    except Exception as _fbe:
+                        logger.debug("Object stats fallback via %s failed: %s", tbl_view, _fbe)
 
         # Process table stats
         for r in results.get('table_stats', []):
