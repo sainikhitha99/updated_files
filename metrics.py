@@ -1396,7 +1396,18 @@ class MetricsCollector:
         plan_rows: List[Dict[str, Any]],
         predicate_columns: List[str],
     ) -> Dict[str, Any]:
-        """Collect table, column, and index statistics for objects in the execution plan."""
+        """Collect table, column, and index statistics for objects in the execution plan.
+
+        Uses (owner, table_name) pairs extracted from plan rows when object_owner is
+        available (v$sql_plan / awr_root_sql_plan), which gives accurate per-schema
+        filtering.  Falls back to table_name-only matching when owner is absent
+        (DBMS_XPLAN-parsed rows).
+
+        Tries dba_tab_statistics / dba_tab_col_statistics / dba_indexes first
+        (requires SELECT_CATALOG_ROLE or DBA).  If those return nothing — possible
+        privilege gap — retries with all_tab_statistics / all_tab_col_statistics /
+        all_indexes, which are accessible to any user.
+        """
         if not plan_rows:
             return {
                 'table_stats': [],
@@ -1406,26 +1417,36 @@ class MetricsCollector:
                 'index_partition_stats': [],
             }
 
-        # Extract unique table names and index names from plan
+        # Extract unique (owner, table_name) and index name from plan rows.
+        # object_owner is available when plan_rows come from v$sql_plan or
+        # awr_root_sql_plan (we now SELECT it). For DBMS_XPLAN-parsed rows it is
+        # absent; those cases fall back to table-name-only matching.
+        owner_table_pairs: List[tuple] = []   # (owner, table_name) — owner may be ''
         table_names: List[str] = []
         index_names: List[str] = []
-        seen_tables = set()
-        seen_indexes = set()
+        seen_tables: set = set()
+        seen_indexes: set = set()
         for row in plan_rows:
             if not isinstance(row, dict):
                 continue
-            op = str(row.get('operation') or row.get('OPERATION') or '').upper()
-            obj = str(row.get('object_name') or row.get('OBJECT_NAME') or '').strip().upper()
+            op  = str(row.get('operation')    or row.get('OPERATION')    or '').upper()
+            obj = str(row.get('object_name')  or row.get('OBJECT_NAME')  or '').strip().upper()
+            own = str(row.get('object_owner') or row.get('OBJECT_OWNER') or '').strip().upper()
             if not obj:
                 continue
+            safe_obj = ''.join(ch for ch in obj if ch.isalnum() or ch in ('_', '$', '#'))
+            safe_own = ''.join(ch for ch in own if ch.isalnum() or ch in ('_', '$', '#'))
+            if not safe_obj:
+                continue
             if 'TABLE' in op:
-                if obj not in seen_tables:
-                    seen_tables.add(obj)
-                    table_names.append(obj)
+                if safe_obj not in seen_tables:
+                    seen_tables.add(safe_obj)
+                    table_names.append(safe_obj)
+                    owner_table_pairs.append((safe_own, safe_obj))
             elif 'INDEX' in op:
-                if obj not in seen_indexes:
-                    seen_indexes.add(obj)
-                    index_names.append(obj)
+                if safe_obj not in seen_indexes:
+                    seen_indexes.add(safe_obj)
+                    index_names.append(safe_obj)
 
         if not table_names and not index_names:
             return {
@@ -1436,11 +1457,21 @@ class MetricsCollector:
                 'index_partition_stats': [],
             }
 
-        # Sanitize names
-        safe_tables = [''.join(ch for ch in t if ch.isalnum() or ch in ('_', '$', '#')) for t in table_names[:20]]
-        safe_tables = [t for t in safe_tables if t]
-        safe_indexes = [''.join(ch for ch in i if ch.isalnum() or ch in ('_', '$', '#')) for i in index_names[:20]]
-        safe_indexes = [i for i in safe_indexes if i]
+        safe_tables  = table_names[:20]
+        safe_indexes = index_names[:20]
+
+        # Build owner-aware filter: WHERE (owner, table_name) IN (...)
+        # Falls back to table_name-only when no owner info is available.
+        def _owner_table_filter(alias: str, pairs: List[tuple]) -> str:
+            """Return a SQL WHERE fragment that filters by (owner, table_name) when
+            owners are known, or table_name IN (...) when they are not."""
+            known_pairs = [(o, t) for o, t in pairs if o]
+            all_tables  = [t for _, t in pairs]
+            if known_pairs:
+                pair_list = ', '.join(f"('{o}', '{t}')" for o, t in known_pairs)
+                return f"({alias}.owner, {alias}.table_name) IN ({pair_list})"
+            tbl_in = ', '.join(f"'{t}'" for t in all_tables)
+            return f"{alias}.table_name IN ({tbl_in})"
 
         table_stats = []
         column_stats = []
@@ -1452,48 +1483,51 @@ class MetricsCollector:
         stats_queries: Dict[str, str] = {}
 
         if safe_tables:
+            tbl_filter  = _owner_table_filter('ts', owner_table_pairs)
+            tbl_filter_i = _owner_table_filter('i', owner_table_pairs)
             tbl_in = ', '.join(f"'{t}'" for t in safe_tables)
+
             stats_queries['table_stats'] = (
-                f"SELECT owner, table_name, num_rows, blocks, avg_row_len, "
-                f"TO_CHAR(last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed, "
-                f"stale_stats, partitioned, degree, sample_size "
-                f"FROM dba_tab_statistics "
-                f"WHERE table_name IN ({tbl_in}) "
-                f"AND object_type = 'TABLE' "
-                f"ORDER BY table_name"
+                f"SELECT ts.owner, ts.table_name, ts.num_rows, ts.blocks, ts.avg_row_len, "
+                f"TO_CHAR(ts.last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed, "
+                f"ts.stale_stats, ts.partitioned, ts.degree, ts.sample_size "
+                f"FROM dba_tab_statistics ts "
+                f"WHERE {tbl_filter} "
+                f"AND ts.object_type = 'TABLE' "
+                f"ORDER BY ts.owner, ts.table_name"
             )
 
             stats_queries['table_partition_stats'] = (
-                f"SELECT owner, table_name, partition_name, subpartition_name, object_type, "
-                f"num_rows, blocks, sample_size, stale_stats, "
-                f"TO_CHAR(last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed "
-                f"FROM dba_tab_statistics "
-                f"WHERE table_name IN ({tbl_in}) "
-                f"AND object_type IN ('PARTITION', 'SUBPARTITION') "
-                f"ORDER BY table_name, partition_name, subpartition_name "
+                f"SELECT ts.owner, ts.table_name, ts.partition_name, ts.subpartition_name, ts.object_type, "
+                f"ts.num_rows, ts.blocks, ts.sample_size, ts.stale_stats, "
+                f"TO_CHAR(ts.last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed "
+                f"FROM dba_tab_statistics ts "
+                f"WHERE {tbl_filter} "
+                f"AND ts.object_type IN ('PARTITION', 'SUBPARTITION') "
+                f"ORDER BY ts.owner, ts.table_name, ts.partition_name, ts.subpartition_name "
                 f"FETCH FIRST 500 ROWS ONLY"
             )
 
-            # Column stats for plan-used columns:
-            # 1) predicate columns from access/filter predicates
-            # 2) index columns for indexes used in the plan
+            # Column stats for plan-used predicate columns + index columns
             safe_pred_cols = [''.join(ch for ch in c if ch.isalnum() or ch in ('_', '$', '#'))
                              for c in (predicate_columns or [])[:60]]
             safe_pred_cols = [c for c in safe_pred_cols if c]
             if safe_pred_cols or safe_indexes:
+                tbl_filter_cs = _owner_table_filter('cs', owner_table_pairs)
                 col_filters = []
                 if safe_pred_cols:
                     col_in = ', '.join(f"'{c}'" for c in safe_pred_cols)
-                    col_filters.append(f"(cs.table_name IN ({tbl_in}) AND cs.column_name IN ({col_in}))")
+                    col_filters.append(
+                        f"({tbl_filter_cs} AND cs.column_name IN ({col_in}))"
+                    )
                 if safe_indexes:
                     idx_in = ', '.join(f"'{i}'" for i in safe_indexes)
                     col_filters.append(
-                        f"(cs.table_name IN ({tbl_in}) AND (cs.table_name, cs.column_name) IN ("
+                        f"({tbl_filter_cs} AND (cs.table_name, cs.column_name) IN ("
                         f"SELECT ic.table_name, ic.column_name FROM dba_ind_columns ic "
                         f"WHERE ic.index_name IN ({idx_in})"
                         f"))"
                     )
-
                 if col_filters:
                     stats_queries['column_stats'] = (
                         f"SELECT cs.owner, cs.table_name, cs.column_name, cs.num_distinct, cs.num_nulls, "
@@ -1502,12 +1536,11 @@ class MetricsCollector:
                         f"cs.sample_size, cs.avg_col_len "
                         f"FROM dba_tab_col_statistics cs "
                         f"WHERE {' OR '.join(col_filters)} "
-                        f"ORDER BY cs.table_name, cs.column_name"
+                        f"ORDER BY cs.owner, cs.table_name, cs.column_name"
                     )
 
-        # Index stats for all indexes on referenced tables.
+        # Index stats for all indexes on referenced tables
         if safe_tables:
-            tbl_in = ', '.join(f"'{t}'" for t in safe_tables)
             stats_queries['index_stats'] = (
                 f"SELECT i.owner, i.table_name, i.index_name, i.index_type, "
                 f"i.uniqueness, i.status, i.num_rows, i.distinct_keys, "
@@ -1518,12 +1551,12 @@ class MetricsCollector:
                 f"FROM dba_indexes i "
                 f"LEFT JOIN dba_ind_columns c "
                 f"  ON c.index_owner = i.owner AND c.index_name = i.index_name "
-                f"WHERE i.table_name IN ({tbl_in}) "
+                f"WHERE {tbl_filter_i} "
                 f"GROUP BY i.owner, i.table_name, i.index_name, i.index_type, "
                 f"i.uniqueness, i.status, i.num_rows, i.distinct_keys, "
                 f"i.clustering_factor, i.blevel, i.leaf_blocks, "
                 f"i.last_analyzed, i.degree, i.partitioned, i.visibility "
-                f"ORDER BY i.table_name, i.index_name"
+                f"ORDER BY i.owner, i.table_name, i.index_name"
             )
 
         if safe_indexes:
@@ -1548,19 +1581,49 @@ class MetricsCollector:
                 'index_partition_stats': [],
             }
 
-        # Execute
-        try:
-            if hasattr(self.conn, 'execute_batch_queries_dict'):
-                results = self.conn.execute_batch_queries_dict(stats_queries)
-            else:
-                results = {}
-                for label, sql in stats_queries.items():
+        # ── Execute — dba_* views first, fall back to all_* on empty/privilege failure ──
+        def _run_batch(queries):
+            try:
+                if hasattr(self.conn, 'execute_batch_queries_dict'):
+                    return self.conn.execute_batch_queries_dict(queries)
+                r = {}
+                for lbl, sql in queries.items():
                     try:
-                        results[label] = self.conn.execute_query_dict(sql) or []
+                        r[lbl] = self.conn.execute_query_dict(sql) or []
                     except Exception:
-                        results[label] = []
-        except Exception:
-            results = {}
+                        r[lbl] = []
+                return r
+            except Exception:
+                return {lbl: [] for lbl in queries}
+
+        results = _run_batch(stats_queries)
+
+        # Fall back to all_* views for any category that came back empty.
+        # all_tab_statistics / all_tab_col_statistics / all_indexes are accessible
+        # without SELECT_CATALOG_ROLE, so this covers non-DBA users.
+        fallback_needed = {
+            k for k in ('table_stats', 'column_stats', 'index_stats',
+                         'table_partition_stats', 'index_partition_stats')
+            if not results.get(k)
+        }
+        if fallback_needed:
+            fallback_queries: Dict[str, str] = {}
+            for k in fallback_needed:
+                if k in stats_queries:
+                    fallback_queries[k] = (
+                        stats_queries[k]
+                        .replace('dba_tab_statistics', 'all_tab_statistics')
+                        .replace('dba_tab_col_statistics', 'all_tab_col_statistics')
+                        .replace('dba_indexes', 'all_indexes')
+                        .replace('dba_ind_columns', 'all_ind_columns')
+                        .replace('dba_ind_statistics', 'all_ind_statistics')
+                    )
+            if fallback_queries:
+                fb_results = _run_batch(fallback_queries)
+                for k, rows in fb_results.items():
+                    if rows:
+                        results[k] = rows
+                        logger.info("Object stats: '%s' filled from all_* fallback (%d rows)", k, len(rows))
 
         # Process table stats
         for r in results.get('table_stats', []):
@@ -1819,8 +1882,16 @@ class MetricsCollector:
             all_plans_list, operations, exec_stats_raw
         )
 
-        # ── Collect table, column, and index statistics for plan objects ──
-        object_stats = self._collect_object_stats_for_plan(plan_rows, predicate_columns)
+        # ── Reuse already-collected object statistics from the SQL-ID data ──
+        # sql_analysis_entry has 'object_statistics' populated by _collect_oracle_sqlid_info.
+        # Reusing it avoids a second round-trip and guarantees the LLM sees exactly the
+        # same data that the UI renders.
+        object_stats = sql_analysis_entry.get('object_statistics') or {}
+        if not object_stats or not any(
+            object_stats.get(k) for k in ('table_stats', 'column_stats', 'index_stats')
+        ):
+            # Only fall back to a fresh collection if the cached data is genuinely absent.
+            object_stats = self._collect_object_stats_for_plan(plan_rows, predicate_columns)
 
         return {
             'sql_id': sql_analysis_entry.get('sql_id'),
@@ -2749,7 +2820,7 @@ class MetricsCollector:
                 f"DBMS_XPLAN.DISPLAY_CURSOR('{safe_id}', NULL, 'ALLSTATS LAST'))"
             ),
             "plan_vsqlplan": (
-                f"SELECT id, parent_id, operation, options, object_name, "
+                f"SELECT id, parent_id, operation, options, object_owner, object_name, "
                 f"object_type, cost, cardinality, bytes, cpu_cost, io_cost, "
                 f"temp_space, access_predicates, filter_predicates, depth "
                 f"FROM v$sql_plan WHERE sql_id = '{safe_id}' "
@@ -2763,7 +2834,7 @@ class MetricsCollector:
             ),
             "all_plans_vsqlplan": (
                 f"SELECT child_number, plan_hash_value, "
-                f"id, parent_id, operation, options, object_name, "
+                f"id, parent_id, operation, options, object_owner, object_name, "
                 f"object_type, cost, cardinality, bytes, cpu_cost, io_cost, "
                 f"temp_space, access_predicates, filter_predicates, depth "
                 f"FROM v$sql_plan WHERE sql_id = '{safe_id}' "
@@ -3012,7 +3083,7 @@ class MetricsCollector:
             fallback_queries: Dict[str, str] = {}
             if phv:
                 fallback_queries["awrplan"] = (
-                    f"SELECT id, parent_id, operation, options, object_name, "
+                    f"SELECT id, parent_id, operation, options, object_owner, object_name, "
                     f"object_type, cost, cardinality, bytes, cpu_cost, io_cost, "
                     f"temp_space, access_predicates, filter_predicates, depth "
                     f"FROM awr_root_sql_plan "
@@ -3022,7 +3093,7 @@ class MetricsCollector:
                 )
             else:
                 fallback_queries["awrplan"] = (
-                    f"SELECT id, parent_id, operation, options, object_name, "
+                    f"SELECT id, parent_id, operation, options, object_owner, object_name, "
                     f"object_type, cost, cardinality, bytes, cpu_cost, io_cost, "
                     f"temp_space, access_predicates, filter_predicates, depth "
                     f"FROM awr_root_sql_plan "
@@ -3169,7 +3240,7 @@ class MetricsCollector:
             phv_list = ','.join(str(p) for p in missing_phvs)
             awr_all_plans_queries["awr_all_plans"] = (
                 f"SELECT plan_hash_value, "
-                f"id, parent_id, operation, options, object_name, "
+                f"id, parent_id, operation, options, object_owner, object_name, "
                 f"object_type, cost, cardinality, bytes, cpu_cost, io_cost, "
                 f"temp_space, access_predicates, filter_predicates, depth "
                 f"FROM awr_root_sql_plan WHERE sql_id = '{safe_id}' "
@@ -3181,7 +3252,7 @@ class MetricsCollector:
             # Cursor cache was completely empty — fetch all AWR plans
             awr_all_plans_queries["awr_all_plans"] = (
                 f"SELECT plan_hash_value, "
-                f"id, parent_id, operation, options, object_name, "
+                f"id, parent_id, operation, options, object_owner, object_name, "
                 f"object_type, cost, cardinality, bytes, cpu_cost, io_cost, "
                 f"temp_space, access_predicates, filter_predicates, depth "
                 f"FROM awr_root_sql_plan WHERE sql_id = '{safe_id}' "

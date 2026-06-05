@@ -4096,6 +4096,13 @@
             html += `<div style="margin:8px 0; padding:8px 12px; background:#fef3c7; border:1px solid #fbbf24; border-radius:6px; font-size:12px;">${issues.join("<br>")}</div>`;
             summary += "Issues: " + issues.join(", ") + "\n";
           }
+        } else {
+          html += '<h4 style="margin:14px 0 6px;">📊 Current Execution Statistics (v$sql)</h4>';
+          html +=
+            '<div style="padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; color:#64748b;">' +
+            "sqlid is not present in v$sql" +
+            "</div>";
+          summary += "Current execution statistics: sqlid is not present in v$sql\n";
         }
 
         // Daily execution history from AWR root snapshot/stat views
@@ -4521,6 +4528,8 @@
             html +=
               '<table style="border-collapse:collapse; width:100%; margin:6px 0; font-size:11px;"><thead><tr>';
             html +=
+              '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Owner</th>';
+            html +=
               '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Table</th>';
             html +=
               '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc; text-align:right;">Num Rows</th>';
@@ -4540,6 +4549,7 @@
                   ? "color:#dc2626; font-weight:bold;"
                   : "";
               html += "<tr>";
+              html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(t, "owner") || _g(t, "OWNER") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(t, "table_name") || _g(t, "TABLE_NAME") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">${escapeHtml(String(_g(t, "num_rows") || _g(t, "NUM_ROWS") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">${escapeHtml(String(_g(t, "blocks") || _g(t, "BLOCKS") || "-"))}</td>`;
@@ -4554,11 +4564,15 @@
           // Column Stats
           if (colStats.length) {
             html +=
-              '<details style="margin:6px 0;"><summary style="cursor:pointer; font-weight:600; font-size:12px; color:#1e40af;">Column Statistics (' +
+              '<details style="margin:6px 0;"><summary style="cursor:pointer; font-weight:600; font-size:12px; color:#1e40af;">Table Column Statistics (' +
               colStats.length +
               " predicate columns)</summary>";
             html +=
               '<table style="border-collapse:collapse; width:100%; margin:6px 0; font-size:11px;"><thead><tr>';
+            html +=
+              '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Owner</th>';
+            html +=
+              '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Table</th>';
             html +=
               '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Column</th>';
             html +=
@@ -4581,6 +4595,8 @@
                   ? "color:#9ca3af;"
                   : "color:#059669; font-weight:bold;";
               html += "<tr>";
+              html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(c, "owner") || _g(c, "OWNER") || "-"))}</td>`;
+              html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(c, "table_name") || _g(c, "TABLE_NAME") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(c, "column_name") || _g(c, "COLUMN_NAME") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">${escapeHtml(String(_g(c, "num_distinct") || _g(c, "NUM_DISTINCT") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">${escapeHtml(String(_g(c, "density") || _g(c, "DENSITY") || "-"))}</td>`;
@@ -4601,6 +4617,10 @@
             html +=
               '<table style="border-collapse:collapse; width:100%; margin:6px 0; font-size:11px;"><thead><tr>';
             html +=
+              '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Owner</th>';
+            html +=
+              '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Table</th>';
+            html +=
               '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Index</th>';
             html +=
               '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Columns</th>';
@@ -4617,6 +4637,8 @@
             html += "</tr></thead><tbody>";
             idxStats.forEach((ix) => {
               html += "<tr>";
+              html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(ix, "owner") || _g(ix, "OWNER") || "-"))}</td>`;
+              html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(ix, "table_name") || _g(ix, "TABLE_NAME") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(ix, "index_name") || _g(ix, "INDEX_NAME") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(ix, "index_columns") || _g(ix, "INDEX_COLUMNS") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">${escapeHtml(String(_g(ix, "distinct_keys") || _g(ix, "DISTINCT_KEYS") || "-"))}</td>`;
@@ -4637,6 +4659,8 @@
             html +=
               '<table style="border-collapse:collapse; width:100%; margin:6px 0; font-size:11px;"><thead><tr>';
             html +=
+              '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Owner</th>';
+            html +=
               '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Table</th>';
             html +=
               '<th style="padding:5px 6px; border:1px solid #e2e8f0; background:#f8fafc;">Partition</th>';
@@ -4651,6 +4675,7 @@
             html += "</tr></thead><tbody>";
             tblPartStats.slice(0, 250).forEach((tp) => {
               html += "<tr>";
+              html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(tp, "owner") || _g(tp, "OWNER") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(tp, "table_name") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(tp, "partition_name") || "-"))}</td>`;
               html += `<td style="padding:4px 6px; border:1px solid #e2e8f0;">${escapeHtml(String(_g(tp, "subpartition_name") || "-"))}</td>`;
