@@ -3707,6 +3707,29 @@
           type === "session" ? "block" : "none";
       }
 
+      // Jump to the SQL/Session Info sub-tab and run a SQL-ID analysis.
+      // Used by clickable SQL IDs in the ASH dashboard (and elsewhere).
+      function goToSqlidAnalysis(sqlId) {
+        sqlId = String(sqlId || "").trim();
+        if (!sqlId || sqlId === "?") return;
+        const typeSel = document.getElementById("sqlidLookupType");
+        if (typeSel) {
+          typeSel.value = "sqlid";
+          toggleSqlidInputs();
+        }
+        const input = document.getElementById("sqlidInput");
+        if (input) input.value = sqlId;
+        switchTroubleshootingSubTab(
+          "sqlid",
+          document.getElementById("tsTabSqlid"),
+        );
+        loadSqlidInfo();
+        // Bring the lookup into view (it sits lower in a long dashboard).
+        document
+          .getElementById("tsSqlid")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
       async function loadSqlidInfo() {
         if (!currentConnection) return;
         const loading = document.getElementById("tsSqlidLoading");
@@ -5012,6 +5035,14 @@
           });
           html += "</tbody></table>";
           summary += `Active sessions: ${sess.length}\n`;
+        } else {
+          html +=
+            '<h4 style="margin:14px 0 6px;">🟢 Active Sessions Running This SQL</h4>';
+          html +=
+            '<div style="padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; color:#64748b;">' +
+            "No sessions are currently running this SQL ID (v$session). The query is not executing right now — session/wait details apply only while it is active." +
+            "</div>";
+          summary += "Active sessions: none currently running this SQL\n";
         }
 
         // Current wait event details (sid.sql style)
@@ -5561,9 +5592,15 @@
               const pct = _g(r, "pct_db_time") ?? "-";
               const sqlText =
                 sqlMap[String(sqlId)] || _g(r, "query_text") || "";
+              // Clickable SQL ID → opens the SQL-ID analysis lookup for it.
+              const sqlIdEsc = escapeHtml(String(sqlId));
+              const sqlIdClickable =
+                sqlId && sqlId !== "?"
+                  ? `<a href="#" onclick="goToSqlidAnalysis('${sqlIdEsc}');return false;" title="Open SQL-ID analysis" style="color:#2563eb; text-decoration:underline; cursor:pointer; font-weight:600;">${sqlIdEsc}</a>`
+                  : sqlIdEsc;
               const display = sqlText
-                ? `${sqlId} — <code style="font-size:11px;">${escapeHtml(String(sqlText).substring(0, 80))}</code>`
-                : String(sqlId);
+                ? `${sqlIdClickable} — <code style="font-size:11px;">${escapeHtml(String(sqlText).substring(0, 80))}</code>`
+                : sqlIdClickable;
               html += `<tr><td style="padding:5px 10px; border:1px solid #e2e8f0; text-align:center;">${i + 1}</td>`;
               html += `<td style="padding:5px 10px; border:1px solid #e2e8f0;">${display}</td>`;
               html += `<td style="padding:5px 10px; border:1px solid #e2e8f0; text-align:right;">${samples}</td>`;

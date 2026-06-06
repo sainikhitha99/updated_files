@@ -1519,11 +1519,12 @@ class MetricsCollector:
                 f"FETCH FIRST 500 ROWS ONLY"
             )
 
-            # ── Column stats — ONLY columns used in the plan ────────────────
-            # "Used in the plan" = predicate columns (from access/filter predicates)
-            # plus the columns of indexes that appear in the plan. When the plan has
-            # no predicate info AND no index access, there are no plan columns, so
-            # column stats are simply empty (this does not break collection).
+            # ── Column stats ───────────────────────────────────────────────
+            # Prefer columns USED in the plan = predicate columns (from access/filter
+            # predicates) + columns of indexes that appear in the plan. If the plan
+            # carries neither (e.g. a full-scan plan with no predicate info from
+            # awr_root_sql_plan), fall back to ALL columns of the plan's tables so
+            # column stats still show instead of being empty.
             safe_pred_cols = [''.join(ch for ch in c if ch.isalnum() or ch in ('_', '$', '#'))
                              for c in (predicate_columns or [])[:60]]
             safe_pred_cols = [c for c in safe_pred_cols if c]
@@ -1544,19 +1545,43 @@ class MetricsCollector:
                     f"))"
                 )
             if col_filters:
-                stats_queries['column_stats'] = (
-                    f"SELECT cs.owner, cs.table_name, cs.column_name, cs.num_distinct, cs.num_nulls, "
-                    f"cs.density, cs.low_value, cs.high_value, cs.histogram, cs.num_buckets, "
-                    f"TO_CHAR(cs.last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed, "
-                    f"cs.sample_size, cs.avg_col_len "
-                    f"FROM dba_tab_col_statistics cs "
-                    f"WHERE {' OR '.join(col_filters)} "
-                    f"ORDER BY cs.owner, cs.table_name, cs.column_name"
-                )
+                _col_where = ' OR '.join(col_filters)
+                _col_tail = "ORDER BY cs.owner, cs.table_name, cs.column_name"
+            else:
+                # No plan-derived columns — fall back to all columns of the tables.
+                _col_where = tbl_filter_cs
+                _col_tail = ("ORDER BY cs.owner, cs.table_name, cs.column_name "
+                             "FETCH FIRST 500 ROWS ONLY")
+            stats_queries['column_stats'] = (
+                f"SELECT cs.owner, cs.table_name, cs.column_name, cs.num_distinct, cs.num_nulls, "
+                f"cs.density, cs.low_value, cs.high_value, cs.histogram, cs.num_buckets, "
+                f"TO_CHAR(cs.last_analyzed, 'YYYY-MM-DD HH24:MI:SS') AS last_analyzed, "
+                f"cs.sample_size, cs.avg_col_len "
+                f"FROM dba_tab_col_statistics cs "
+                f"WHERE {_col_where} "
+                f"{_col_tail}"
+            )
 
-        # Index stats — ONLY indexes that appear in the plan (not every index on the table)
+        # ── Index stats ────────────────────────────────────────────────────
+        # Prefer indexes USED in the plan. If the plan has no index access
+        # (e.g. a full-scan, no-predicate plan), fall back to all indexes on the
+        # plan's tables so index stats still show instead of being empty.
         if safe_indexes:
-            idx_filter_i = _owner_name_filter('i', 'index_name', owner_index_pairs)
+            idx_filter_i   = _owner_name_filter('i', 'index_name', owner_index_pairs)
+            idx_filter_ist = _owner_name_filter('ist', 'index_name', owner_index_pairs)
+        elif safe_tables:
+            idx_filter_i = _owner_table_filter('i', owner_table_pairs)
+            # dba_ind_statistics has no table_name — scope to indexes on the tables.
+            idx_filter_ist = (
+                f"(ist.owner, ist.index_name) IN ("
+                f"SELECT ii.owner, ii.index_name FROM dba_indexes ii "
+                f"WHERE {_owner_table_filter('ii', owner_table_pairs)})"
+            )
+        else:
+            idx_filter_i = None
+            idx_filter_ist = None
+
+        if idx_filter_i:
             stats_queries['index_stats'] = (
                 f"SELECT i.owner, i.table_name, i.index_name, i.index_type, "
                 f"i.uniqueness, i.status, i.num_rows, i.distinct_keys, "
@@ -1574,9 +1599,6 @@ class MetricsCollector:
                 f"i.last_analyzed, i.degree, i.partitioned, i.visibility "
                 f"ORDER BY i.owner, i.table_name, i.index_name"
             )
-
-            # Partition-level index stats — also scoped to the plan's indexes
-            idx_filter_ist = _owner_name_filter('ist', 'index_name', owner_index_pairs)
             stats_queries['index_partition_stats'] = (
                 f"SELECT ist.owner, ist.index_name, ist.partition_name, ist.subpartition_name, ist.object_type, "
                 f"ist.blevel, ist.leaf_blocks, ist.distinct_keys, ist.clustering_factor, ist.num_rows, "
